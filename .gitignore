@@ -14,3 +14,6 @@ uploads/incidents/audio/*
 
 # Logs
 *.log
+node_modules/
+test_browser.js
+test_dom.js
