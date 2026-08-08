@@ -83,7 +83,7 @@ class AdminPanel {
 
                     const { error } = await supabaseClient.from('guards').insert([{
                         name, email, password,
-                        facility_id: facilityId || null,
+                        facility_id: facilityId ? parseInt(facilityId) : null,
                         facility_name: facilityName || null,
                         role: 'guard'
                     }]);

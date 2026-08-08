@@ -24,7 +24,8 @@ class GuardApp {
         
         const facilityNameHeader = document.getElementById('guard-facility-name-header');
         if (facilityNameHeader) {
-            facilityNameHeader.textContent = user.facilityName || 'Mis Rondas';
+            // Siempre mostrar el nombre de la instalación asignada
+            facilityNameHeader.textContent = user.facilityName || 'NEXO Rondas';
         }
 
         // Mostrar vista inicial
@@ -100,26 +101,47 @@ class GuardApp {
     static allAssignedRoutes = [];
 
     static async checkAssignedRounds() {
+        const user = Auth.getUser();
+
         if (!supabaseClient) {
             this.showNoRounds();
             return;
         }
 
         try {
-            document.getElementById('guard-status-text').textContent = "Buscando rondas asignadas...";
-            
-            // Lógica simplificada: obtener todas las rutas.
-            const routes = await ApiService.fetch('routes');
-            
-            if (routes && routes.length > 0) {
+            document.getElementById('guard-status-text').textContent = 'Buscando rondas asignadas...';
+
+            let routes = [];
+
+            if (user && user.facilityId) {
+                // Filtrar SOLO las rutas de la instalación asignada al guardia
+                const { data, error } = await supabaseClient
+                    .from('routes')
+                    .select('*')
+                    .eq('facility_id', user.facilityId);
+
+                if (error) throw error;
+                routes = data || [];
+            } else {
+                // Si el guardia no tiene instalación asignada, no mostrar nada
+                routes = [];
+            }
+
+            if (routes.length > 0) {
                 this.allAssignedRoutes = routes;
                 this.renderRoundsMenu();
             } else {
                 this.showNoRounds();
+                // Mensaje más claro si no hay instalación asignada
+                if (!user || !user.facilityId) {
+                    document.getElementById('guard-status-text').textContent = 'Sin instalación asignada';
+                } else {
+                    document.getElementById('guard-status-text').textContent = 'Sin rondas asignadas';
+                }
             }
 
         } catch (e) {
-            console.error("Error al obtener rondas", e);
+            console.error('Error al obtener rondas', e);
             this.showNoRounds();
         }
     }

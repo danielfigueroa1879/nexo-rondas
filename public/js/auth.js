@@ -35,7 +35,7 @@ class Auth {
                         email: guardData.email,
                         role: 'guard',
                         name: guardData.name,
-                        facilityId: guardData.facility_id,
+                        facilityId: guardData.facility_id ? parseInt(guardData.facility_id) : null,
                         facilityName: guardData.facility_name
                     };
                     localStorage.setItem('nexo_user', JSON.stringify(userObj));
