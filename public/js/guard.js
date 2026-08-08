@@ -19,12 +19,28 @@ class GuardApp {
 
         // Configurar incidentes
         document.getElementById('btn-report-incident')?.addEventListener('click', () => {
-            document.getElementById('modal-incident').style.display = 'flex';
+            document.getElementById('modal-incident').classList.add('open');
+            document.getElementById('incident-overlay').classList.add('open');
+        });
+
+        document.getElementById('btn-close-incident')?.addEventListener('click', () => {
+            document.getElementById('modal-incident').classList.remove('open');
+            document.getElementById('incident-overlay').classList.remove('open');
+        });
+
+        document.getElementById('incident-overlay')?.addEventListener('click', () => {
+            document.getElementById('modal-incident').classList.remove('open');
+            document.getElementById('incident-overlay').classList.remove('open');
         });
 
         document.getElementById('btn-continue-scan')?.addEventListener('click', () => {
             document.getElementById('between-points-info').style.display = 'none';
             document.getElementById('scanner-container').style.display = 'block';
+            
+            document.getElementById('btn-continue-scan').style.display = 'none';
+            document.getElementById('btn-start-scan-first').style.display = 'none';
+            document.getElementById('btn-cancel-scan').style.display = 'block';
+
             this.updateUIForNextPoint();
             this.initScanner();
         });
@@ -32,6 +48,11 @@ class GuardApp {
         document.getElementById('btn-start-scan-first')?.addEventListener('click', () => {
             document.getElementById('pre-scan-info').style.display = 'none';
             document.getElementById('scanner-container').style.display = 'block';
+            
+            document.getElementById('btn-continue-scan').style.display = 'none';
+            document.getElementById('btn-start-scan-first').style.display = 'none';
+            document.getElementById('btn-cancel-scan').style.display = 'block';
+
             this.updateUIForNextPoint();
             this.initScanner();
         });
@@ -41,10 +62,14 @@ class GuardApp {
                 try { this.html5QrcodeScanner.clear(); } catch(e) {}
             }
             document.getElementById('scanner-container').style.display = 'none';
+            document.getElementById('btn-cancel-scan').style.display = 'none';
+            
             if (this.currentSequenceIndex === 0) {
                 document.getElementById('pre-scan-info').style.display = 'block';
+                document.getElementById('btn-start-scan-first').style.display = 'flex';
             } else {
                 document.getElementById('between-points-info').style.display = 'block';
+                document.getElementById('btn-continue-scan').style.display = 'flex';
             }
         });
 
@@ -98,7 +123,8 @@ class GuardApp {
 
     static showNoRounds() {
         document.getElementById('active-round-info').style.display = 'none';
-        document.getElementById('btn-report-incident').style.display = 'none';
+        document.getElementById('guard-bottom-nav').style.display = 'none';
+        document.getElementById('guard-progress-container').style.display = 'none';
         document.getElementById('no-rounds-info').style.display = 'block';
         document.getElementById('guard-status-text').textContent = "Libre";
         
@@ -109,15 +135,21 @@ class GuardApp {
 
     static async startRound() {
         document.getElementById('no-rounds-info').style.display = 'none';
-        document.getElementById('active-round-info').style.display = 'block';
-        document.getElementById('btn-report-incident').style.display = 'block';
+        document.getElementById('active-round-info').style.display = 'flex';
+        document.getElementById('guard-bottom-nav').style.display = 'flex';
+        document.getElementById('guard-progress-container').style.display = 'block';
         
         document.getElementById('scanner-container').style.display = 'none';
         document.getElementById('between-points-info').style.display = 'none';
         document.getElementById('pre-scan-info').style.display = 'block';
         
-        document.getElementById('current-route-name').textContent = this.activeRoute.name;
+        document.getElementById('btn-cancel-scan').style.display = 'none';
+        document.getElementById('btn-continue-scan').style.display = 'none';
+        document.getElementById('btn-start-scan-first').style.display = 'flex';
+        
+        document.getElementById('current-route-name-top').textContent = this.activeRoute.name;
         this.currentSequenceIndex = 0;
+        this.updateProgressBar();
 
         // Configurar el nombre del punto inicial
         if (this.activeRoute.points.length > 0) {
@@ -145,10 +177,18 @@ class GuardApp {
         if (this.currentSequenceIndex < this.activeRoute.points.length) {
             const nextPoint = this.activeRoute.points[this.currentSequenceIndex].checkpoints;
             document.getElementById('next-checkpoint-name').textContent = nextPoint.name;
-            document.getElementById('guard-status-text').textContent = `Progreso: ${this.currentSequenceIndex}/${this.activeRoute.points.length}`;
+            document.getElementById('guard-status-text').textContent = `Punto ${this.currentSequenceIndex + 1} de ${this.activeRoute.points.length}`;
+            this.updateProgressBar();
         } else {
             this.completeRound();
         }
+    }
+
+    static updateProgressBar() {
+        if (!this.activeRoute || !this.activeRoute.points.length) return;
+        const total = this.activeRoute.points.length;
+        const percentage = (this.currentSequenceIndex / total) * 100;
+        document.getElementById('guard-progress-fill').style.width = `${percentage}%`;
     }
 
     static initScanner() {
@@ -211,6 +251,7 @@ class GuardApp {
 
             // Avanzar
             this.currentSequenceIndex++;
+            this.updateProgressBar();
             
             if (this.currentSequenceIndex < this.activeRoute.points.length) {
                 // Mostrar pantalla intermedia de caminata
@@ -218,6 +259,9 @@ class GuardApp {
                 const nextPoint = this.activeRoute.points[this.currentSequenceIndex].checkpoints;
                 document.getElementById('upcoming-checkpoint-name').textContent = nextPoint.name;
                 document.getElementById('between-points-info').style.display = 'block';
+                
+                document.getElementById('btn-cancel-scan').style.display = 'none';
+                document.getElementById('btn-continue-scan').style.display = 'flex';
             } else {
                 // Terminar ronda directamente
                 this.completeRound();
@@ -236,7 +280,8 @@ class GuardApp {
 
     static async completeRound() {
         document.getElementById('active-round-info').style.display = 'none';
-        document.getElementById('btn-report-incident').style.display = 'none';
+        document.getElementById('guard-bottom-nav').style.display = 'none';
+        document.getElementById('guard-progress-container').style.display = 'none';
         
         if (this.html5QrcodeScanner) {
             this.html5QrcodeScanner.clear();
@@ -296,9 +341,10 @@ class GuardApp {
                 photo_url: photoUrl
             });
 
-            document.getElementById('modal-incident').style.display = 'none';
+            document.getElementById('modal-incident').classList.remove('open');
+            document.getElementById('incident-overlay').classList.remove('open');
             document.getElementById('form-incident').reset();
-            alert("Incidente reportado correctamente.");
+            alert('Incidente reportado exitosamente');
 
         } catch (e) {
             console.error(e);

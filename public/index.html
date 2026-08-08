@@ -152,84 +152,98 @@
             </div>
         </div>
 
-        <!-- Guard App View -->
-        <main id="view-guard" class="view" style="display: none; flex-direction: column; height: 100vh; padding: 0;">
+        <!-- Guard App View (Native Redesign) -->
+        <main id="view-guard" class="view" style="display: none; flex-direction: column; height: 100vh; padding: 0; background: var(--bg-color);">
             
-            <header class="glass-surface text-center" style="padding: var(--space-4); border-radius: 0 0 var(--radius-lg) var(--radius-lg); position: sticky; top: 0; z-index: 10;">
-                <h1 style="font-size: 1.5rem; margin:0;">Mis Rondas</h1>
-                <p style="margin: 0; font-size: 0.9rem;" id="guard-status-text">Buscando rondas pendientes...</p>
-                <button id="btn-logout-guard" class="btn btn-primary mt-4" style="padding: var(--space-1) var(--space-2); font-size: 0.8rem;">Cerrar Sesión</button>
-            </header>
-
-            <div class="container" style="flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: var(--space-4);">
-                
-                <div id="active-round-info" class="glass-surface w-100 mb-4" style="width: 100%; display: none;">
-                    <h2 id="current-route-name" class="text-center">Ronda Activa</h2>
-                    
-                    <div id="pre-scan-info" style="display: none; text-align: center; margin-bottom: var(--space-4);">
-                        <p style="font-size: 1.1rem; color: var(--text-color); margin-bottom: var(--space-2);">Diríjase al punto inicial de la ronda:</p>
-                        <h2 id="initial-checkpoint-name" style="color: var(--primary-color); font-size: 1.5rem; margin-top: 0; margin-bottom: var(--space-6);">Cargando...</h2>
-                        <button id="btn-start-scan-first" class="btn btn-primary btn-block" style="padding: var(--space-4); font-size: 1.1rem;">📷 Iniciar Escaneo Inicial</button>
-                    </div>
-
-                    <div id="scanner-container" style="display: none;">
-                        <div style="background: var(--warning-color); color: white; padding: var(--space-2); border-radius: var(--radius-md); text-align: center; margin-bottom: var(--space-4);">
-                            <strong>Punto a Escanear:</strong> <br>
-                            <span id="next-checkpoint-name" style="font-size: 1.2rem;">Cargando...</span>
-                        </div>
-                        <div id="qr-reader" style="width: 100%; max-width: 400px; margin: 0 auto; overflow: hidden; border-radius: var(--radius-md); border: 2px solid var(--primary-color);"></div>
-                        <p class="text-center mt-4" style="font-size: 0.85rem; color: var(--text-secondary);">La cámara escaneará automáticamente el QR cuando lo enfoques.</p>
-                        <button id="btn-cancel-scan" class="btn btn-block mt-4" style="border: 1px solid var(--danger-color); color: var(--danger-color); background: transparent;">Cerrar Cámara</button>
-                    </div>
-
-                    <div id="between-points-info" style="display: none; text-align: center;">
-                        <div style="background: var(--secondary-color); color: white; padding: var(--space-4); border-radius: var(--radius-lg); margin-bottom: var(--space-6);">
-                            <h3 style="margin: 0 0 var(--space-2) 0;">¡Escaneo Exitoso! ✅</h3>
-                            <p style="margin: 0;">Punto registrado correctamente.</p>
-                        </div>
-                        
-                        <p style="font-size: 1.1rem; color: var(--text-color); margin-bottom: var(--space-2);">Por favor, camine hacia el siguiente punto:</p>
-                        <h2 id="upcoming-checkpoint-name" style="color: var(--primary-color); font-size: 1.5rem; margin-top: 0; margin-bottom: var(--space-6);">Cargando...</h2>
-                        
-                        <button id="btn-continue-scan" class="btn btn-primary btn-block" style="padding: var(--space-4); font-size: 1.1rem;">📷 Abrir Escáner para Siguiente Punto</button>
-                    </div>
-                </div>
-
-                <div id="no-rounds-info" class="text-center" style="width: 100%;">
-                    <svg xmlns="http://www.w3.org/2000/svg" style="width: 64px; height: 64px; color: var(--secondary-color); margin: 0 auto;" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    <h2 class="mt-4">¡Todo al día!</h2>
-                    <p>No tienes rondas pendientes en este momento.</p>
-                    <button class="btn btn-primary" onclick="GuardApp.checkAssignedRounds()">Refrescar</button>
-                </div>
-
-                <!-- Incident Button -->
-                <button id="btn-report-incident" class="btn" style="background-color: var(--danger-color); color: white; margin-top: auto; width: 100%; padding: var(--space-4); display: none;">
-                    ⚠️ Reportar Incidente
+            <!-- Top Bar -->
+            <div class="guard-top-bar">
+                <h1 id="current-route-name-top">Mis Rondas</h1>
+                <button id="btn-logout-guard" class="icon-btn" title="Cerrar Sesión">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
                 </button>
             </div>
+
+            <!-- Progress Bar -->
+            <div class="progress-container" id="guard-progress-container" style="display: none;">
+                <div class="progress-bar-fill" id="guard-progress-fill"></div>
+            </div>
+
+            <!-- Content Area -->
+            <div class="guard-content">
+                
+                <!-- No Rounds State -->
+                <div id="no-rounds-info" class="guard-status-card" style="margin-top: 20vh;">
+                    <svg xmlns="http://www.w3.org/2000/svg" style="width: 64px; height: 64px; color: var(--secondary-color); margin: 0 auto; margin-bottom: var(--space-4);" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <h2>¡Todo al día!</h2>
+                    <p>No tienes rondas asignadas pendientes.</p>
+                    <button class="btn btn-primary mt-4" onclick="GuardApp.checkAssignedRounds()">Refrescar</button>
+                </div>
+
+                <!-- Active Round Flow -->
+                <div id="active-round-info" style="display: none; height: 100%; display: flex; flex-direction: column; justify-content: center;">
+                    
+                    <!-- Pre-Scan / Next Point Info -->
+                    <div id="pre-scan-info" class="guard-status-card" style="display: none;">
+                        <p style="text-transform: uppercase; letter-spacing: 1px; font-weight: 600; font-size: 0.85rem; color: var(--text-secondary);">Diríjase al punto:</p>
+                        <h2 id="initial-checkpoint-name" class="text-highlight">Cargando...</h2>
+                        <p id="guard-status-text" style="font-weight: 500; color: var(--primary-color);">Punto 1 de X</p>
+                    </div>
+
+                    <!-- Scanner Viewport -->
+                    <div id="scanner-container" style="display: none;">
+                        <div class="scanner-viewport">
+                            <div id="qr-reader"></div>
+                        </div>
+                        <p class="text-center mt-4" style="color: var(--text-secondary); font-size: 0.9rem;">Apunte la cámara al código QR.</p>
+                    </div>
+
+                </div>
+
+            </div>
+
+            <!-- Floating Bottom Navigation -->
+            <div id="guard-bottom-nav" class="bottom-nav" style="display: none;">
+                <!-- Main Action Button -->
+                <button id="btn-start-scan-first" class="btn btn-primary btn-floating pulse-animation">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
+                    Iniciar Escáner
+                </button>
+                <button id="btn-continue-scan" class="btn btn-primary btn-floating pulse-animation" style="display: none;">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
+                    Siguiente Punto
+                </button>
+                <button id="btn-cancel-scan" class="btn btn-floating" style="display: none; background: var(--surface-color); color: var(--text-primary);">
+                    Cancelar
+                </button>
+                
+                <!-- Incident Button -->
+                <button id="btn-report-incident" class="btn btn-floating danger" title="Reportar Incidente">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+                </button>
+            </div>
+
         </main>
 
-        <!-- Modal Reporte Incidente -->
-        <div id="modal-incident" class="view" style="position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 100; display: none; align-items: center; justify-content: center;">
-            <div class="glass-surface" style="width: 100%; max-width: 400px; max-height: 90vh; overflow-y: auto;">
-                <h3 style="color: var(--danger-color);">Reportar Incidente</h3>
-                <form id="form-incident">
-                    <div class="form-group">
-                        <label class="form-label">Descripción</label>
-                        <textarea id="incident-desc" class="form-control" rows="3" required></textarea>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Foto de evidencia</label>
-                        <input type="file" id="incident-photo" accept="image/*" capture="environment" class="form-control" style="padding: 5px;">
-                    </div>
-                    <div style="display: flex; gap: var(--space-2); margin-top: var(--space-4);">
-                        <button type="button" class="btn btn-block" onclick="document.getElementById('modal-incident').style.display='none'">Cancelar</button>
-                        <button type="submit" class="btn btn-block" style="background: var(--danger-color); color: white;">Enviar Reporte</button>
-                    </div>
-                </form>
-            </div>
+        <!-- Overlay & Bottom Sheet for Incident -->
+        <div id="incident-overlay" class="bottom-sheet-overlay"></div>
+        <div id="modal-incident" class="bottom-sheet">
+            <h3 style="color: var(--danger-color); margin-bottom: var(--space-4);">Reportar Incidente</h3>
+            <form id="form-incident">
+                <div class="form-group">
+                    <label class="form-label">Descripción del problema</label>
+                    <textarea id="incident-desc" class="form-control" rows="3" required placeholder="Ej. Puerta forzada, luminaria rota..."></textarea>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Foto de evidencia</label>
+                    <input type="file" id="incident-photo" accept="image/*" capture="environment" class="form-control" style="padding: 10px;">
+                </div>
+                <div style="display: flex; gap: var(--space-2); margin-top: var(--space-6);">
+                    <button type="button" class="btn btn-block" id="btn-close-incident">Cancelar</button>
+                    <button type="submit" class="btn btn-block" style="background: var(--danger-color); color: white;">Enviar Reporte</button>
+                </div>
+            </form>
         </div>
 
     </div>
