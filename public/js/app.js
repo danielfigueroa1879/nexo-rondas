@@ -3,15 +3,27 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Router simple
     const showView = (viewId) => {
-        document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+        document.querySelectorAll('.view').forEach(v => {
+            v.classList.remove('active');
+            v.style.display = 'none';
+        });
         const targetView = document.getElementById(viewId);
         if (targetView) {
             targetView.classList.add('active');
+            if (viewId === 'view-guard') {
+                targetView.style.display = 'flex';
+            } else {
+                targetView.style.display = 'block';
+            }
         }
     };
 
     // Check auth state on load
-    if (Auth.isAuthenticated()) {
+    // Show login initially if not authenticated
+    if (!Auth.isAuthenticated()) {
+        showView('view-login');
+    } else {
+        // If already logged in, show the appropriate view
         const user = Auth.getUser();
         if (user.role === 'guard') {
             showView('view-guard');
@@ -19,8 +31,6 @@ document.addEventListener('DOMContentLoaded', () => {
             showView('view-dashboard');
             document.getElementById('user-name').textContent = user.name;
         }
-    } else {
-        showView('view-login');
     }
 
     // Login Form Submit
