@@ -1,10 +1,50 @@
 // public/js/auth.js
 class Auth {
     static async login(email, password) {
-        // MODO DEMO y Validación de Guardias Locales
+
+        // ─── 1. Admin demo hardcodeado ───
+        if (email === 'admin@empresa.com' && password === '123456') {
+            const adminUser = {
+                id: 'admin-demo-001',
+                email: email,
+                role: 'admin',
+                name: 'Administrador'
+            };
+            localStorage.setItem('nexo_user', JSON.stringify(adminUser));
+            return adminUser;
+        }
+
+        // ─── 2. Buscar guardia en Supabase (acceso desde cualquier dispositivo) ───
+        if (supabaseClient) {
+            try {
+                const { data: guardData, error } = await supabaseClient
+                    .from('guards')
+                    .select('*')
+                    .eq('email', email)
+                    .eq('password', password)
+                    .maybeSingle();
+
+                if (guardData) {
+                    const userObj = {
+                        id: guardData.id,
+                        email: guardData.email,
+                        role: 'guard',
+                        name: guardData.name,
+                        facilityId: guardData.facility_id,
+                        facilityName: guardData.facility_name
+                    };
+                    localStorage.setItem('nexo_user', JSON.stringify(userObj));
+                    return userObj;
+                }
+            } catch (e) {
+                console.warn('Error consultando Supabase guards:', e.message);
+            }
+        }
+
+        // ─── 3. Fallback: buscar en localStorage (guardias registrados localmente) ───
         const localGuards = JSON.parse(localStorage.getItem('nexo_guards') || '[]');
         const matchedGuard = localGuards.find(g => g.email === email && g.password === password);
-        
+
         if (matchedGuard) {
             const userObj = {
                 id: matchedGuard.id,
@@ -18,20 +58,8 @@ class Auth {
             return userObj;
         }
 
-        // MODO DEMO: Credenciales de administrador predefinidas
-        if (email === 'admin@empresa.com' && password === '123456') {
-            const adminUser = {
-                id: 'admin-demo-001',
-                email: email,
-                role: 'admin',
-                name: 'Administrador'
-            };
-            localStorage.setItem('nexo_user', JSON.stringify(adminUser));
-            return adminUser;
-        }
-
+        // ─── 4. Modo demo para cualquier email ───
         if (!supabaseClient) {
-            console.warn("MODO DEMO ACTIVADO: Usando datos simulados porque no hay Supabase configurado.");
             const isGuard = email.includes('guardia');
             const demoUser = {
                 id: 'demo-id-123',
@@ -44,36 +72,11 @@ class Auth {
             return demoUser;
         }
 
-        try {
-            const { data, error } = await supabaseClient.auth.signInWithPassword({
-                email: email, 
-                password: password,
-            });
-
-            if (error) throw error;
-            
-            // Get user role from a custom table 'users' linked to auth.users
-            const { data: profile } = await supabaseClient
-                .from('users')
-                .select('*')
-                .eq('id', data.user.id)
-                .single();
-
-            const userObj = {
-                id: data.user.id,
-                email: data.user.email,
-                role: profile ? profile.role : 'admin', // default to admin for demo if no profile
-                name: profile ? profile.name : 'Administrador'
-            };
-
-            localStorage.setItem('nexo_user', JSON.stringify(userObj));
-            return userObj;
-
-        } catch (error) {
-            alert(error.message);
-            return null;
-        }
+        // ─── 5. Credenciales incorrectas ───
+        alert('Correo o contraseña incorrectos. Verifica tus credenciales.');
+        return null;
     }
+
 
     static async logout() {
         if (supabaseClient) {

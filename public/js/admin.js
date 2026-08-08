@@ -49,7 +49,7 @@ class AdminPanel {
         });
 
         // Formulario: Guardar Guardia
-        document.getElementById('form-guard')?.addEventListener('submit', (e) => {
+        document.getElementById('form-guard')?.addEventListener('submit', async (e) => {
             e.preventDefault();
             const name = document.getElementById('guard-name').value.trim();
             const email = document.getElementById('guard-email').value.trim();
@@ -63,25 +63,58 @@ class AdminPanel {
                 return;
             }
 
-            const guards = JSON.parse(localStorage.getItem('nexo_guards') || '[]');
-            if (guards.find(g => g.email === email)) {
-                alert('Ya existe un guardia con ese correo.');
-                return;
+            const submitBtn = e.target.querySelector('button[type="submit"]');
+            if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'Guardando...'; }
+
+            try {
+                // 1. Guardar en Supabase (para acceso desde cualquier dispositivo)
+                if (supabaseClient) {
+                    // Verificar si ya existe en Supabase
+                    const { data: existing } = await supabaseClient
+                        .from('guards')
+                        .select('id')
+                        .eq('email', email)
+                        .maybeSingle();
+
+                    if (existing) {
+                        alert('Ya existe un guardia con ese correo.');
+                        return;
+                    }
+
+                    const { error } = await supabaseClient.from('guards').insert([{
+                        name, email, password,
+                        facility_id: facilityId || null,
+                        facility_name: facilityName || null,
+                        role: 'guard'
+                    }]);
+
+                    if (error) throw error;
+                }
+
+                // 2. También guardar en localStorage como cache local
+                const guards = JSON.parse(localStorage.getItem('nexo_guards') || '[]');
+                if (!guards.find(g => g.email === email)) {
+                    guards.push({
+                        id: 'guard-' + Date.now(),
+                        name, email, password,
+                        facilityId, facilityName,
+                        role: 'guard'
+                    });
+                    localStorage.setItem('nexo_guards', JSON.stringify(guards));
+                }
+
+                const modal = document.getElementById('modal-guard');
+                if (modal) modal.style.display = 'none';
+                e.target.reset();
+                this.renderGuardsList();
+                alert(`✅ Guardia "${name}" registrado. Ya puede ingresar con:\nEmail: ${email}\nContraseña: ${password}`);
+
+            } catch (err) {
+                console.error(err);
+                alert('Error al registrar guardia: ' + (err.message || err));
+            } finally {
+                if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'Guardar Guardia'; }
             }
-
-            guards.push({
-                id: 'guard-' + Date.now(),
-                name, email, password,
-                facilityId, facilityName,
-                role: 'guard'
-            });
-            localStorage.setItem('nexo_guards', JSON.stringify(guards));
-
-            const modal = document.getElementById('modal-guard');
-            if (modal) modal.style.display = 'none';
-            document.getElementById('form-guard').reset();
-            this.renderGuardsList();
-            alert(`Guardia "${name}" registrado exitosamente.`);
         });
 
         // Botón: Nueva Instalación
