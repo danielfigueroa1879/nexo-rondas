@@ -310,54 +310,89 @@ class GuardApp {
     static initScanner() {
         // Limpiar escáner previo si existe
         if (this.html5QrcodeScanner) {
-            try { this.html5QrcodeScanner.stop().catch(()=>{}).finally(() => {
-                this.html5QrcodeScanner.clear();
-            }); } catch(e) {}
+            try { this.html5QrcodeScanner.stop(); } catch(e) {}
             this.html5QrcodeScanner = null;
         }
 
         const readerEl = document.getElementById('qr-reader');
         if (!readerEl) return;
-        readerEl.innerHTML = ''; // Limpiar contenido previo
+        readerEl.innerHTML = '<div style="color:white;text-align:center;padding:20px;font-size:0.9rem;">⏳ Iniciando cámara...</div>';
 
-        // Usar Html5Qrcode directamente (más compatible en móviles iOS/Android)
+        // Esperar 250ms para que el DOM esté listo (necesario en iOS Safari)
+        setTimeout(() => {
+            this._startCamera();
+        }, 250);
+    }
+
+    static _startCamera() {
+        const readerEl = document.getElementById('qr-reader');
+        if (!readerEl) return;
+        readerEl.innerHTML = '';
+
+        // Verificar si el navegador soporta getUserMedia
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            readerEl.innerHTML = '<div style="color:#ff6b6b;text-align:center;padding:20px;">❌ Tu navegador no soporta la cámara.<br><small>Usa Chrome o Safari en iOS 14.3+</small></div>';
+            return;
+        }
+
         const html5Qrcode = new Html5Qrcode('qr-reader');
         this.html5QrcodeScanner = html5Qrcode;
 
-        const config = {
-            fps: 10,
-            qrbox: { width: 250, height: 250 },
-            aspectRatio: 1.0
-        };
+        const config = { fps: 10, qrbox: { width: 220, height: 220 } };
 
-        // Intentar con cámara trasera (environment) primero
         html5Qrcode.start(
             { facingMode: 'environment' },
             config,
-            (decodedText, decodedResult) => {
-                this.onScanSuccess(decodedText, decodedResult);
-            },
-            (errorMessage) => { /* ignorar errores de frame vacío */ }
+            (decodedText) => { this.onScanSuccess(decodedText); },
+            () => {}
         ).catch(err => {
-            console.warn('Cámara trasera no disponible, intentando cámara frontal:', err);
-            // Fallback: intentar con cualquier cámara
+            console.warn('Cámara environment falló:', err.name, err.message);
+
+            // Si fue denegado por permisos, mostrar instrucciones claras
+            if (err.name === 'NotAllowedError' || err.message.includes('permission')) {
+                readerEl.innerHTML = `
+                    <div style="color:#ff6b6b;text-align:center;padding:20px;background:#1a1a2e;border-radius:8px;">
+                        <div style="font-size:2rem;margin-bottom:8px;">🔒</div>
+                        <strong>Permiso de cámara denegado</strong><br>
+                        <small style="color:#aaa;margin-top:8px;display:block;">Ve a Configuración > Safari/Chrome > Cámara y actívala para este sitio, luego recarga la página.</small>
+                    </div>`;
+                return;
+            }
+
+            // Intentar cámara frontal como fallback
             html5Qrcode.start(
                 { facingMode: 'user' },
                 config,
-                (decodedText, decodedResult) => {
-                    this.onScanSuccess(decodedText, decodedResult);
-                },
+                (decodedText) => { this.onScanSuccess(decodedText); },
                 () => {}
             ).catch(err2 => {
-                console.error('No se pudo acceder a ninguna cámara:', err2);
-                alert('No se pudo acceder a la cámara. Asegúrate de que la aplicación tiene permisos de cámara y que estás usando HTTPS.');
-                // Restaurar la vista anterior
-                document.getElementById('scanner-container').style.display = 'none';
-                document.getElementById('pre-scan-info').style.display = 'block';
-                document.getElementById('btn-start-scan-first').style.display = 'flex';
-                document.getElementById('btn-cancel-scan').style.display = 'none';
+                console.error('Ambas cámaras fallaron:', err2);
+                // Mostrar alternativa de subir imagen
+                readerEl.innerHTML = `
+                    <div style="color:#ff6b6b;text-align:center;padding:20px;background:#1a1a2e;border-radius:8px;">
+                        <div style="font-size:2rem;margin-bottom:8px;">📷</div>
+                        <strong>No se pudo abrir la cámara</strong><br>
+                        <small style="color:#aaa;display:block;margin:8px 0;">Asegúrate de usar HTTPS y que el sitio tiene permiso de cámara.</small>
+                        <label style="display:inline-block;margin-top:12px;background:var(--primary-color);color:white;padding:10px 20px;border-radius:8px;cursor:pointer;font-weight:600;">
+                            📁 Tomar foto del QR
+                            <input type="file" accept="image/*" capture="environment" style="display:none" onchange="GuardApp._scanFromFile(this)">
+                        </label>
+                    </div>`;
             });
         });
+    }
+
+    static _scanFromFile(input) {
+        if (!input.files || !input.files[0]) return;
+        const html5Qrcode = new Html5Qrcode('qr-reader');
+        html5Qrcode.scanFile(input.files[0], true)
+            .then(decodedText => {
+                html5Qrcode.clear();
+                this.onScanSuccess(decodedText);
+            })
+            .catch(err => {
+                alert('No se pudo leer el QR de la imagen. Intenta de nuevo.');
+            });
     }
 
     static async onScanSuccess(decodedText, decodedResult) {
