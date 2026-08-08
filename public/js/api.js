@@ -14,6 +14,11 @@ if (window.supabase) {
 class ApiService {
     // Wrapper genérico para las tablas
     static async fetch(table, match = null) {
+        if (SUPABASE_URL === 'TU_SUPABASE_URL_AQUI') {
+            console.log(`[Demo] Simulando fetch a tabla: ${table}`);
+            return []; // Devuelve arreglo vacío en modo demo
+        }
+
         if (!supabase) throw new Error("Supabase no está configurado.");
         let query = supabase.from(table).select('*');
         if (match) {
@@ -25,6 +30,11 @@ class ApiService {
     }
 
     static async insert(table, payload) {
+        if (SUPABASE_URL === 'TU_SUPABASE_URL_AQUI') {
+            console.log(`[Demo] Simulando insert a tabla: ${table}`, payload);
+            return [{ id: Math.floor(Math.random() * 1000), ...payload }];
+        }
+
         if (!supabase) throw new Error("Supabase no está configurado.");
         const { data, error } = await supabase.from(table).insert([payload]).select();
         if (error) throw error;

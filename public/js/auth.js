@@ -1,17 +1,23 @@
 // public/js/auth.js
 class Auth {
     static async login(email, password) {
-        if (!supabase) {
-            alert("Por favor, configura las credenciales de Supabase en api.js primero.");
-            return null;
+        // MODO DEMO: Si no hay credenciales reales de Supabase configuradas, permite el acceso para ver la interfaz
+        if (SUPABASE_URL === 'TU_SUPABASE_URL_AQUI') {
+            console.warn("MODO DEMO ACTIVADO: Usando datos simulados porque no hay Supabase configurado.");
+            const isGuard = email.includes('guardia');
+            const demoUser = {
+                id: 'demo-id-123',
+                email: email,
+                role: isGuard ? 'guard' : 'admin',
+                name: isGuard ? 'Guardia Demo' : 'Administrador Demo'
+            };
+            localStorage.setItem('nexo_user', JSON.stringify(demoUser));
+            return demoUser;
         }
-        
+
         try {
-            // Nota: En Supabase el login estándar es con Email, no RUT por defecto.
-            // Para login con RUT, tendríamos que guardar el RUT en el perfil de usuario 
-            // o crear un sistema custom, pero para integrarnos rápido a Supabase usaremos el email asociado.
             const { data, error } = await supabase.auth.signInWithPassword({
-                email: email, // El form HTML todavía dice RUT, lo cambiaremos luego o simularemos que rut = email.
+                email: email, 
                 password: password,
             });
 
