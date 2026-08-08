@@ -61,21 +61,23 @@ class GuardApp {
         });
 
         document.getElementById('btn-start-scan-first')?.addEventListener('click', async () => {
-            await this.startRound(); // Registrar inicio de la ronda
+            // Primero abrir la cámara, LUEGO registrar en BD (no bloquear)
             document.getElementById('pre-scan-info').style.display = 'none';
             document.getElementById('scanner-container').style.display = 'block';
-            
             document.getElementById('btn-continue-scan').style.display = 'none';
             document.getElementById('btn-start-scan-first').style.display = 'none';
             document.getElementById('btn-cancel-scan').style.display = 'block';
 
             this.updateUIForNextPoint();
             this.initScanner();
+
+            // Registrar inicio en BD en segundo plano (no bloquea si falla)
+            this.startRound().catch(e => console.warn('startRound error (no crítico):', e));
         });
 
         document.getElementById('btn-cancel-scan')?.addEventListener('click', () => {
             if (this.html5QrcodeScanner) {
-                try { this.html5QrcodeScanner.clear(); } catch(e) {}
+                try { this.html5QrcodeScanner.stop().catch(()=>{}).finally(()=>{ this.html5QrcodeScanner = null; }); } catch(e) { this.html5QrcodeScanner = null; }
             }
             document.getElementById('scanner-container').style.display = 'none';
             document.getElementById('btn-cancel-scan').style.display = 'none';
@@ -284,20 +286,56 @@ class GuardApp {
     }
 
     static initScanner() {
+        // Limpiar escáner previo si existe
         if (this.html5QrcodeScanner) {
-            try {
+            try { this.html5QrcodeScanner.stop().catch(()=>{}).finally(() => {
                 this.html5QrcodeScanner.clear();
-            } catch(e) {}
+            }); } catch(e) {}
+            this.html5QrcodeScanner = null;
         }
 
-        this.html5QrcodeScanner = new Html5QrcodeScanner(
-            "qr-reader", { fps: 10, qrbox: { width: 250, height: 250 } }
-        );
+        const readerEl = document.getElementById('qr-reader');
+        if (!readerEl) return;
+        readerEl.innerHTML = ''; // Limpiar contenido previo
 
-        this.html5QrcodeScanner.render(
-            this.onScanSuccess.bind(this),
-            (error) => { /* ignorar errores de frame vacío */ }
-        );
+        // Usar Html5Qrcode directamente (más compatible en móviles iOS/Android)
+        const html5Qrcode = new Html5Qrcode('qr-reader');
+        this.html5QrcodeScanner = html5Qrcode;
+
+        const config = {
+            fps: 10,
+            qrbox: { width: 250, height: 250 },
+            aspectRatio: 1.0
+        };
+
+        // Intentar con cámara trasera (environment) primero
+        html5Qrcode.start(
+            { facingMode: 'environment' },
+            config,
+            (decodedText, decodedResult) => {
+                this.onScanSuccess(decodedText, decodedResult);
+            },
+            (errorMessage) => { /* ignorar errores de frame vacío */ }
+        ).catch(err => {
+            console.warn('Cámara trasera no disponible, intentando cámara frontal:', err);
+            // Fallback: intentar con cualquier cámara
+            html5Qrcode.start(
+                { facingMode: 'user' },
+                config,
+                (decodedText, decodedResult) => {
+                    this.onScanSuccess(decodedText, decodedResult);
+                },
+                () => {}
+            ).catch(err2 => {
+                console.error('No se pudo acceder a ninguna cámara:', err2);
+                alert('No se pudo acceder a la cámara. Asegúrate de que la aplicación tiene permisos de cámara y que estás usando HTTPS.');
+                // Restaurar la vista anterior
+                document.getElementById('scanner-container').style.display = 'none';
+                document.getElementById('pre-scan-info').style.display = 'block';
+                document.getElementById('btn-start-scan-first').style.display = 'flex';
+                document.getElementById('btn-cancel-scan').style.display = 'none';
+            });
+        });
     }
 
     static async onScanSuccess(decodedText, decodedResult) {
