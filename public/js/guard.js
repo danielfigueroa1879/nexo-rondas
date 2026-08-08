@@ -22,6 +22,13 @@ class GuardApp {
             document.getElementById('modal-incident').style.display = 'flex';
         });
 
+        document.getElementById('btn-continue-scan')?.addEventListener('click', () => {
+            document.getElementById('between-points-info').style.display = 'none';
+            document.getElementById('scanner-container').style.display = 'block';
+            this.updateUIForNextPoint();
+            this.initScanner();
+        });
+
         document.getElementById('form-incident')?.addEventListener('submit', async (e) => {
             e.preventDefault();
             await this.reportIncident();
@@ -85,6 +92,9 @@ class GuardApp {
         document.getElementById('no-rounds-info').style.display = 'none';
         document.getElementById('active-round-info').style.display = 'block';
         document.getElementById('btn-report-incident').style.display = 'block';
+        
+        document.getElementById('scanner-container').style.display = 'block';
+        document.getElementById('between-points-info').style.display = 'none';
         
         document.getElementById('current-route-name').textContent = this.activeRoute.name;
         this.currentSequenceIndex = 0;
@@ -171,9 +181,25 @@ class GuardApp {
             document.body.style.backgroundColor = 'var(--secondary-color)';
             setTimeout(() => { document.body.style.backgroundColor = 'var(--bg-color)'; }, 500);
 
+            // Detener escáner inmediatamente
+            if (this.html5QrcodeScanner) {
+                try { this.html5QrcodeScanner.clear(); } catch(e) {}
+            }
+
             // Avanzar
             this.currentSequenceIndex++;
-            this.updateUIForNextPoint();
+            
+            if (this.currentSequenceIndex < this.activeRoute.points.length) {
+                // Mostrar pantalla intermedia de caminata
+                document.getElementById('scanner-container').style.display = 'none';
+                const nextPoint = this.activeRoute.points[this.currentSequenceIndex].checkpoints;
+                document.getElementById('upcoming-checkpoint-name').textContent = nextPoint.name;
+                document.getElementById('between-points-info').style.display = 'block';
+            } else {
+                // Terminar ronda directamente
+                this.completeRound();
+            }
+
         } else {
             // Escaneo incorrecto
             alert(`Punto Incorrecto.\nDebes escanear: ${expectedPoint.name}`);
@@ -182,7 +208,7 @@ class GuardApp {
         // Liberar el bloqueo después de procesar
         setTimeout(() => {
             this.isProcessingScan = false;
-        }, 1500); // 1.5 segundos de cooldown entre escaneos
+        }, 1500); 
     }
 
     static async completeRound() {
@@ -202,7 +228,9 @@ class GuardApp {
 
         this.completedRouteIds.push(this.activeRoute.id);
         
-        alert("¡Ronda Completada Exitosamente!");
+        document.getElementById('between-points-info').style.display = 'none';
+        
+        alert("¡Muy buen trabajo! Ronda finalizada exitosamente.");
         
         // Buscar si hay otra ronda
         this.checkAssignedRounds();

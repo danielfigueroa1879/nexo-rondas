@@ -165,13 +165,27 @@
                 
                 <div id="active-round-info" class="glass-surface w-100 mb-4" style="width: 100%; display: none;">
                     <h2 id="current-route-name" class="text-center">Ronda Activa</h2>
-                    <div style="background: var(--warning-color); color: white; padding: var(--space-2); border-radius: var(--radius-md); text-align: center; margin-bottom: var(--space-4);">
-                        <strong>Siguiente Punto:</strong> <br>
-                        <span id="next-checkpoint-name" style="font-size: 1.2rem;">Cargando...</span>
+                    
+                    <div id="scanner-container">
+                        <div style="background: var(--warning-color); color: white; padding: var(--space-2); border-radius: var(--radius-md); text-align: center; margin-bottom: var(--space-4);">
+                            <strong>Punto a Escanear:</strong> <br>
+                            <span id="next-checkpoint-name" style="font-size: 1.2rem;">Cargando...</span>
+                        </div>
+                        <div id="qr-reader" style="width: 100%; max-width: 400px; margin: 0 auto; overflow: hidden; border-radius: var(--radius-md); border: 2px solid var(--primary-color);"></div>
+                        <p class="text-center mt-4" style="font-size: 0.85rem; color: var(--text-secondary);">La cámara escaneará automáticamente el QR cuando lo enfoques.</p>
                     </div>
 
-                    <div id="qr-reader" style="width: 100%; max-width: 400px; margin: 0 auto; overflow: hidden; border-radius: var(--radius-md); border: 2px solid var(--primary-color);"></div>
-                    <p class="text-center mt-4" style="font-size: 0.85rem; color: var(--text-secondary);">La cámara escaneará automáticamente el QR cuando lo enfoques.</p>
+                    <div id="between-points-info" style="display: none; text-align: center;">
+                        <div style="background: var(--secondary-color); color: white; padding: var(--space-4); border-radius: var(--radius-lg); margin-bottom: var(--space-6);">
+                            <h3 style="margin: 0 0 var(--space-2) 0;">¡Escaneo Exitoso! ✅</h3>
+                            <p style="margin: 0;">Punto registrado correctamente.</p>
+                        </div>
+                        
+                        <p style="font-size: 1.1rem; color: var(--text-color); margin-bottom: var(--space-2);">Por favor, camine hacia el siguiente punto:</p>
+                        <h2 id="upcoming-checkpoint-name" style="color: var(--primary-color); font-size: 1.5rem; margin-top: 0; margin-bottom: var(--space-6);">Cargando...</h2>
+                        
+                        <button id="btn-continue-scan" class="btn btn-primary btn-block" style="padding: var(--space-4); font-size: 1.1rem;">📷 Abrir Escáner para Siguiente Punto</button>
+                    </div>
                 </div>
 
                 <div id="no-rounds-info" class="text-center" style="width: 100%;">
