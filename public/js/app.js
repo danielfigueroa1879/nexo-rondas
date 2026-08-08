@@ -27,9 +27,12 @@ document.addEventListener('DOMContentLoaded', () => {
         const user = Auth.getUser();
         if (user.role === 'guard') {
             showView('view-guard');
+            if (typeof GuardApp !== 'undefined') GuardApp.init();
         } else {
             showView('view-dashboard');
             document.getElementById('user-name').textContent = user.name;
+            if (typeof AdminPanel !== 'undefined') AdminPanel.init();
+            if (typeof SupervisorDashboard !== 'undefined') SupervisorDashboard.init();
         }
     }
 

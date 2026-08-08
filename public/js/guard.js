@@ -60,7 +60,8 @@ class GuardApp {
             this.initScanner();
         });
 
-        document.getElementById('btn-start-scan-first')?.addEventListener('click', () => {
+        document.getElementById('btn-start-scan-first')?.addEventListener('click', async () => {
+            await this.startRound(); // Registrar inicio de la ronda
             document.getElementById('pre-scan-info').style.display = 'none';
             document.getElementById('scanner-container').style.display = 'block';
             
