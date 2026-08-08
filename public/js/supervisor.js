@@ -72,9 +72,9 @@ class SupervisorDashboard {
         this.executions.forEach(exec => {
             if (exec.status === 'in_progress') activeCount++;
             
-            // Heurística simple de atraso: Si lleva más de 30 minutos "in_progress", está atrasada.
+            // Heurística de atraso: Si lleva más de 60 minutos "in_progress", está atrasada.
             const startTime = new Date(exec.start_time);
-            const isDelayed = exec.status === 'in_progress' && (Date.now() - startTime.getTime() > 30 * 60 * 1000);
+            const isDelayed = exec.status === 'in_progress' && (Date.now() - startTime.getTime() > 60 * 60 * 1000);
             if (isDelayed) delayedCount++;
 
             const statusColor = exec.status === 'completed' ? 'var(--secondary-color)' : (isDelayed ? 'var(--danger-color)' : 'var(--primary-color)');

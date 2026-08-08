@@ -6,6 +6,8 @@ class GuardApp {
     static html5QrcodeScanner = null;
     static activeRoundExecutionId = null;
     static completedRouteIds = [];
+    static trafficTimer = null;
+    static roundStartTime = null;
     static isProcessingScan = false;
 
     static async init() {
@@ -107,7 +109,29 @@ class GuardApp {
                 this.activeRoute.points = routePoints || [];
                 
                 if (this.activeRoute.points.length > 0) {
-                    this.startRound();
+                    this.setTrafficLight('pending', this.activeRoute.name);
+                    
+                    document.getElementById('no-rounds-info').style.display = 'none';
+                    document.getElementById('active-round-info').style.display = 'flex';
+                    document.getElementById('guard-bottom-nav').style.display = 'flex';
+                    document.getElementById('guard-progress-container').style.display = 'block';
+                    
+                    document.getElementById('scanner-container').style.display = 'none';
+                    document.getElementById('between-points-info').style.display = 'none';
+                    document.getElementById('pre-scan-info').style.display = 'block';
+                    
+                    document.getElementById('btn-cancel-scan').style.display = 'none';
+                    document.getElementById('btn-continue-scan').style.display = 'none';
+                    document.getElementById('btn-start-scan-first').style.display = 'flex';
+                    
+                    document.getElementById('current-route-name-top').textContent = this.activeRoute.name;
+                    this.currentSequenceIndex = 0;
+                    this.updateProgressBar();
+
+                    if (this.activeRoute.points.length > 0) {
+                        const firstPoint = this.activeRoute.points[0].checkpoints;
+                        document.getElementById('initial-checkpoint-name').textContent = firstPoint.name;
+                    }
                 } else {
                     this.showNoRounds();
                 }
@@ -134,28 +158,9 @@ class GuardApp {
     }
 
     static async startRound() {
-        document.getElementById('no-rounds-info').style.display = 'none';
-        document.getElementById('active-round-info').style.display = 'flex';
-        document.getElementById('guard-bottom-nav').style.display = 'flex';
-        document.getElementById('guard-progress-container').style.display = 'block';
-        
-        document.getElementById('scanner-container').style.display = 'none';
-        document.getElementById('between-points-info').style.display = 'none';
-        document.getElementById('pre-scan-info').style.display = 'block';
-        
-        document.getElementById('btn-cancel-scan').style.display = 'none';
-        document.getElementById('btn-continue-scan').style.display = 'none';
-        document.getElementById('btn-start-scan-first').style.display = 'flex';
-        
-        document.getElementById('current-route-name-top').textContent = this.activeRoute.name;
-        this.currentSequenceIndex = 0;
-        this.updateProgressBar();
-
-        // Configurar el nombre del punto inicial
-        if (this.activeRoute.points.length > 0) {
-            const firstPoint = this.activeRoute.points[0].checkpoints;
-            document.getElementById('initial-checkpoint-name').textContent = firstPoint.name;
-        }
+        this.setTrafficLight('in_progress', this.activeRoute.name);
+        this.roundStartTime = Date.now();
+        this.startTrafficTimer();
 
         // Registrar inicio de ronda en la BD
         const user = Auth.getUser();
@@ -279,29 +284,72 @@ class GuardApp {
     }
 
     static async completeRound() {
-        document.getElementById('active-round-info').style.display = 'none';
-        document.getElementById('guard-bottom-nav').style.display = 'none';
-        document.getElementById('guard-progress-container').style.display = 'none';
+        if (this.trafficTimer) clearInterval(this.trafficTimer);
+        this.setTrafficLight('completed', this.activeRoute.name);
         
         if (this.html5QrcodeScanner) {
             this.html5QrcodeScanner.clear();
         }
-
-        // Marcar como completada en BD
-        if (this.activeRoundExecutionId && supabaseClient) {
-            await supabaseClient.from('round_executions')
-                .update({ end_time: new Date().toISOString(), status: 'completed' })
-                .eq('id', this.activeRoundExecutionId);
+        
+        // Registrar fin de ronda en BD
+        if (this.activeRoundExecutionId) {
+            try {
+                await ApiService.update('round_executions', this.activeRoundExecutionId, {
+                    status: 'completed',
+                    end_time: new Date().toISOString()
+                });
+            } catch (e) {
+                console.error("No se pudo actualizar el fin de la ronda", e);
+            }
         }
-
+        
         this.completedRouteIds.push(this.activeRoute.id);
         
-        document.getElementById('between-points-info').style.display = 'none';
+        // Esperar 4 segundos para celebrar antes de volver al inicio
+        setTimeout(() => {
+            document.getElementById('active-round-info').style.display = 'none';
+            document.getElementById('guard-bottom-nav').style.display = 'none';
+            document.getElementById('guard-progress-container').style.display = 'none';
+            this.activeRoute = null;
+            this.activeRoundExecutionId = null;
+            this.roundStartTime = null;
+            this.checkAssignedRounds();
+        }, 4000);
+    }
+
+    static setTrafficLight(status, name) {
+        const banner = document.getElementById('round-traffic-light');
+        const nameEl = document.getElementById('traffic-round-name');
+        const statusEl = document.getElementById('traffic-round-status');
         
-        alert("¡Muy buen trabajo! Ronda finalizada exitosamente.");
+        nameEl.textContent = name;
+        banner.className = 'traffic-banner';
         
-        // Buscar si hay otra ronda
-        this.checkAssignedRounds();
+        if (status === 'pending') {
+            banner.classList.add('traffic-red');
+            statusEl.textContent = 'Pendiente';
+        } else if (status === 'in_progress') {
+            banner.classList.add('traffic-yellow');
+            statusEl.textContent = 'En Curso';
+        } else if (status === 'overdue') {
+            banner.classList.add('traffic-red');
+            statusEl.textContent = 'Atrasada';
+        } else if (status === 'completed') {
+            banner.classList.add('traffic-green');
+            statusEl.textContent = 'Completada';
+        }
+    }
+
+    static startTrafficTimer() {
+        if (this.trafficTimer) clearInterval(this.trafficTimer);
+        this.trafficTimer = setInterval(() => {
+            if (this.roundStartTime) {
+                const elapsed = Date.now() - this.roundStartTime;
+                if (elapsed > 60 * 60 * 1000) { // 1 hora
+                    this.setTrafficLight('overdue', this.activeRoute.name);
+                }
+            }
+        }, 30000); // Check every 30s
     }
 
     static async reportIncident() {
