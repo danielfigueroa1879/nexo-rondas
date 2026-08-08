@@ -18,6 +18,18 @@ class Auth {
             return userObj;
         }
 
+        // MODO DEMO: Credenciales de administrador predefinidas
+        if (email === 'admin@empresa.com' && password === '123456') {
+            const adminUser = {
+                id: 'admin-demo-001',
+                email: email,
+                role: 'admin',
+                name: 'Administrador'
+            };
+            localStorage.setItem('nexo_user', JSON.stringify(adminUser));
+            return adminUser;
+        }
+
         if (!supabaseClient) {
             console.warn("MODO DEMO ACTIVADO: Usando datos simulados porque no hay Supabase configurado.");
             const isGuard = email.includes('guardia');
