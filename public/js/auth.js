@@ -2,13 +2,18 @@
 class Auth {
     static async login(email, password) {
 
-        // ─── 1. Admin demo hardcodeado ───
-        if (email === 'admin@empresa.com' && password === '123456') {
+        // ─── 1. Admin hardcodeado (demo + cuenta real) ───
+        const adminAccounts = [
+            { email: 'admin@empresa.com',          password: '123456' },
+            { email: 'danielfigueroa1879@gmail.com', password: 'Acua4040_' }
+        ];
+        const isAdmin = adminAccounts.find(a => a.email === email && a.password === password);
+        if (isAdmin) {
             const adminUser = {
-                id: 'admin-demo-001',
+                id: 'admin-' + email,
                 email: email,
                 role: 'admin',
-                name: 'Administrador'
+                name: email === 'admin@empresa.com' ? 'Administrador' : 'Daniel Figueroa'
             };
             localStorage.setItem('nexo_user', JSON.stringify(adminUser));
             return adminUser;
