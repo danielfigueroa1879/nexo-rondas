@@ -7,6 +7,8 @@
     <link rel="stylesheet" href="css/index.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+    <!-- Supabase SDK -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
     <div class="app-wrapper container">
@@ -25,8 +27,8 @@
             
             <form id="login-form">
                 <div class="form-group">
-                    <label for="rut" class="form-label">RUT</label>
-                    <input type="text" id="rut" class="form-control" placeholder="12345678-9" required autocomplete="username">
+                    <label for="email" class="form-label">Correo Electrónico (o RUT)</label>
+                    <input type="email" id="email" class="form-control" placeholder="admin@empresa.com" required autocomplete="username">
                 </div>
                 <div class="form-group">
                     <label for="password" class="form-label">Contraseña</label>
@@ -73,24 +75,113 @@
                 <div id="checkpoints-list" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: var(--space-4);">
                     <p>Selecciona una instalación para ver sus puntos.</p>
                 </div>
+
+                <hr style="margin: var(--space-6) 0; border: 0; border-top: 1px solid var(--surface-border);">
+
+                <h2>Configuración de Rondas</h2>
+                <div class="form-group">
+                    <button id="btn-new-route" class="btn btn-primary mb-4 hidden">+ Configurar Nueva Ronda</button>
+                </div>
+                <div id="routes-list">
+                    <p>Selecciona una instalación para ver sus rondas.</p>
+                </div>
+
             </div>
         </main>
 
+        <!-- Modal para Nueva Ronda -->
+        <div id="modal-route" class="view" style="position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 100; display: none; align-items: center; justify-content: center;">
+            <div class="glass-surface" style="width: 100%; max-width: 500px; max-height: 90vh; overflow-y: auto;">
+                <h3>Configurar Nueva Ronda</h3>
+                <form id="form-route">
+                    <div class="form-group">
+                        <label class="form-label">Nombre de la Ronda (Ej: Ronda Nocturna 1)</label>
+                        <input type="text" id="route-name" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Horario de Inicio (Ej: 23:00)</label>
+                        <input type="time" id="route-time" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Puntos a Escanear (Orden Estricto)</label>
+                        <p style="font-size: 0.8rem; color: var(--warning-color);">Selecciona los puntos en el orden exacto en que el guardia debe escanearlos.</p>
+                        <div id="route-checkpoints-selection" style="background: var(--input-bg); border: 1px solid var(--input-border); border-radius: var(--radius-md); padding: var(--space-2); max-height: 200px; overflow-y: auto;">
+                            <!-- Checkboxes will be injected here -->
+                        </div>
+                    </div>
+                    <div style="display: flex; gap: var(--space-2); margin-top: var(--space-4);">
+                        <button type="button" class="btn btn-block" onclick="document.getElementById('modal-route').style.display='none'">Cancelar</button>
+                        <button type="submit" class="btn btn-primary btn-block">Guardar Ronda</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
         <!-- Guard App View -->
-        <main id="view-guard" class="view">
-            <div class="glass-surface">
-                <h1>Mis Rondas</h1>
-                <p>Escaneo estricto activado.</p>
-                <!-- UI for QR scanner will go here -->
-                <button id="btn-logout-guard" class="btn btn-primary">Cerrar Sesión</button>
+        <main id="view-guard" class="view" style="display: none; flex-direction: column; height: 100vh; padding: 0;">
+            
+            <header class="glass-surface text-center" style="padding: var(--space-4); border-radius: 0 0 var(--radius-lg) var(--radius-lg); position: sticky; top: 0; z-index: 10;">
+                <h1 style="font-size: 1.5rem; margin:0;">Mis Rondas</h1>
+                <p style="margin: 0; font-size: 0.9rem;" id="guard-status-text">Buscando rondas pendientes...</p>
+                <button id="btn-logout-guard" class="btn btn-primary mt-4" style="padding: var(--space-1) var(--space-2); font-size: 0.8rem;">Cerrar Sesión</button>
+            </header>
+
+            <div class="container" style="flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: var(--space-4);">
+                
+                <div id="active-round-info" class="glass-surface w-100 mb-4" style="width: 100%; display: none;">
+                    <h2 id="current-route-name" class="text-center">Ronda Activa</h2>
+                    <div style="background: var(--warning-color); color: white; padding: var(--space-2); border-radius: var(--radius-md); text-align: center; margin-bottom: var(--space-4);">
+                        <strong>Siguiente Punto:</strong> <br>
+                        <span id="next-checkpoint-name" style="font-size: 1.2rem;">Cargando...</span>
+                    </div>
+
+                    <div id="qr-reader" style="width: 100%; max-width: 400px; margin: 0 auto; overflow: hidden; border-radius: var(--radius-md); border: 2px solid var(--primary-color);"></div>
+                    <p class="text-center mt-4" style="font-size: 0.85rem; color: var(--text-secondary);">La cámara escaneará automáticamente el QR cuando lo enfoques.</p>
+                </div>
+
+                <div id="no-rounds-info" class="text-center" style="width: 100%;">
+                    <svg xmlns="http://www.w3.org/2000/svg" style="width: 64px; height: 64px; color: var(--secondary-color); margin: 0 auto;" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <h2 class="mt-4">¡Todo al día!</h2>
+                    <p>No tienes rondas pendientes en este momento.</p>
+                    <button class="btn btn-primary" onclick="GuardApp.checkAssignedRounds()">Refrescar</button>
+                </div>
+
+                <!-- Incident Button -->
+                <button id="btn-report-incident" class="btn" style="background-color: var(--danger-color); color: white; margin-top: auto; width: 100%; padding: var(--space-4); display: none;">
+                    ⚠️ Reportar Incidente
+                </button>
             </div>
         </main>
+
+        <!-- Modal Reporte Incidente -->
+        <div id="modal-incident" class="view" style="position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 100; display: none; align-items: center; justify-content: center;">
+            <div class="glass-surface" style="width: 100%; max-width: 400px; max-height: 90vh; overflow-y: auto;">
+                <h3 style="color: var(--danger-color);">Reportar Incidente</h3>
+                <form id="form-incident">
+                    <div class="form-group">
+                        <label class="form-label">Descripción</label>
+                        <textarea id="incident-desc" class="form-control" rows="3" required></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Foto de evidencia</label>
+                        <input type="file" id="incident-photo" accept="image/*" capture="environment" class="form-control" style="padding: 5px;">
+                    </div>
+                    <div style="display: flex; gap: var(--space-2); margin-top: var(--space-4);">
+                        <button type="button" class="btn btn-block" onclick="document.getElementById('modal-incident').style.display='none'">Cancelar</button>
+                        <button type="submit" class="btn btn-block" style="background: var(--danger-color); color: white;">Enviar Reporte</button>
+                    </div>
+                </form>
+            </div>
+        </div>
 
     </div>
 
     <script src="js/api.js"></script>
     <script src="js/auth.js"></script>
     <script src="js/admin.js"></script>
+    <script src="js/guard.js"></script>
     <script src="js/app.js"></script>
 </body>
 </html>

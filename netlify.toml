@@ -1,0 +1,8 @@
+[build]
+  publish = "public"
+  command = "echo 'No build command needed for Vanilla JS'"
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200

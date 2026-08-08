@@ -1,38 +1,33 @@
 // public/js/api.js
-const API_URL = '/api'; // Relative URL since it's served from the same domain
+
+// TODO: Reemplaza estas variables con las reales de tu proyecto de Supabase
+const SUPABASE_URL = 'TU_SUPABASE_URL_AQUI';
+const SUPABASE_KEY = 'TU_SUPABASE_ANON_KEY_AQUI';
+
+// Inicializa el cliente global (disponible en ventana porque cargamos el CDN en index.html)
+let supabase = null;
+
+if (window.supabase) {
+    supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+}
 
 class ApiService {
-    static async request(endpoint, method = 'GET', body = null) {
-        const token = localStorage.getItem('nexo_token');
-        const headers = {
-            'Content-Type': 'application/json'
-        };
-
-        if (token) {
-            headers['Authorization'] = `Bearer ${token}`;
+    // Wrapper genérico para las tablas
+    static async fetch(table, match = null) {
+        if (!supabase) throw new Error("Supabase no está configurado.");
+        let query = supabase.from(table).select('*');
+        if (match) {
+            query = query.match(match);
         }
+        const { data, error } = await query;
+        if (error) throw error;
+        return data;
+    }
 
-        const config = {
-            method,
-            headers
-        };
-
-        if (body) {
-            config.body = JSON.stringify(body);
-        }
-
-        try {
-            const response = await fetch(`${API_URL}${endpoint}`, config);
-            const data = await response.json();
-
-            if (!response.ok) {
-                throw new Error(data.message || 'Error en la petición');
-            }
-
-            return data;
-        } catch (error) {
-            console.error('API Error:', error);
-            throw error;
-        }
+    static async insert(table, payload) {
+        if (!supabase) throw new Error("Supabase no está configurado.");
+        const { data, error } = await supabase.from(table).insert([payload]).select();
+        if (error) throw error;
+        return data;
     }
 }

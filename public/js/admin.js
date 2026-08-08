@@ -15,10 +15,14 @@ class AdminPanel {
                 const facilityId = e.target.value;
                 if (facilityId) {
                     document.getElementById('btn-new-checkpoint').classList.remove('hidden');
+                    document.getElementById('btn-new-route').classList.remove('hidden');
                     await this.loadCheckpoints(facilityId);
+                    await this.loadRoutes(facilityId);
                 } else {
                     document.getElementById('btn-new-checkpoint').classList.add('hidden');
+                    document.getElementById('btn-new-route').classList.add('hidden');
                     document.getElementById('checkpoints-list').innerHTML = '<p>Selecciona una instalación para ver sus puntos.</p>';
+                    document.getElementById('routes-list').innerHTML = '<p>Selecciona una instalación para ver sus rondas.</p>';
                 }
             });
         }
@@ -37,11 +41,60 @@ class AdminPanel {
                 this.createCheckpoint(facilityId, name);
             }
         });
+
+        document.getElementById('btn-new-route')?.addEventListener('click', () => {
+            document.getElementById('modal-route').style.display = 'flex';
+        });
+
+        document.getElementById('form-route')?.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const facilityId = document.getElementById('select-facility').value;
+            const name = document.getElementById('route-name').value;
+            const time = document.getElementById('route-time').value;
+            
+            // Get checked checkpoints in order (this is a simplified logic, in real life we might want drag&drop for ordering)
+            const checkboxes = document.querySelectorAll('input[name="route-checkpoint"]:checked');
+            const points = Array.from(checkboxes).map(cb => parseInt(cb.value));
+
+            if (points.length === 0) {
+                alert("Debes seleccionar al menos un punto para la ronda.");
+                return;
+            }
+
+            try {
+                // En Supabase, para rutas, insertamos la ruta, luego obtenemos el ID y luego insertamos los puntos
+                const [routeData] = await ApiService.insert('routes', {
+                    facility_id: facilityId,
+                    name: name,
+                    schedule_time: time
+                });
+                
+                const routeId = routeData.id;
+                
+                const routePointsPayload = points.map((checkpointId, index) => ({
+                    route_id: routeId,
+                    checkpoint_id: checkpointId,
+                    sequence_order: index + 1
+                }));
+                
+                // Inserta los puntos en lote
+                if (supabase) {
+                    await supabase.from('route_points').insert(routePointsPayload);
+                }
+
+                document.getElementById('modal-route').style.display = 'none';
+                document.getElementById('form-route').reset();
+                await this.loadRoutes(facilityId);
+            } catch (err) {
+                alert('Error al crear ruta: ' + err.message);
+            }
+        });
     }
 
     static async loadFacilities(companyId) {
         try {
-            const facilities = await ApiService.request(`/admin/facilities?company_id=${companyId}`);
+            // Nota: Aquí quitamos los parámetros custom y usamos el fetch genérico
+            const facilities = await ApiService.fetch('facilities', { company_id: companyId });
             
             // Populate list
             const listEl = document.getElementById('facilities-list');
@@ -75,7 +128,7 @@ class AdminPanel {
 
     static async createFacility(companyId, name) {
         try {
-            await ApiService.request('/admin/facilities', 'POST', { company_id: companyId, name });
+            await ApiService.insert('facilities', { company_id: companyId, name: name });
             await this.loadFacilities(companyId);
         } catch (e) {
             alert('Error: ' + e.message);
@@ -87,14 +140,18 @@ class AdminPanel {
         listEl.innerHTML = '<p>Cargando puntos...</p>';
         
         try {
-            const checkpoints = await ApiService.request(`/admin/checkpoints?facility_id=${facilityId}`);
+            const checkpoints = await ApiService.fetch('checkpoints', { facility_id: facilityId });
             
+            // Update Checkpoints view
             if (checkpoints.length === 0) {
                 listEl.innerHTML = '<p>No hay puntos configurados.</p>';
+                document.getElementById('route-checkpoints-selection').innerHTML = '<p>Crea puntos primero.</p>';
                 return;
             }
 
             listEl.innerHTML = '';
+            let checkboxHtml = '';
+            
             checkpoints.forEach(cp => {
                 const card = document.createElement('div');
                 card.className = 'glass-surface text-center';
@@ -117,7 +174,17 @@ class AdminPanel {
                     colorLight : "#ffffff",
                     correctLevel : QRCode.CorrectLevel.H
                 });
+
+                // Add to modal selection list
+                checkboxHtml += `
+                    <label style="display: block; margin-bottom: var(--space-2); cursor: pointer;">
+                        <input type="checkbox" name="route-checkpoint" value="${cp.id}">
+                        ${cp.name}
+                    </label>
+                `;
             });
+            
+            document.getElementById('route-checkpoints-selection').innerHTML = checkboxHtml;
 
         } catch (e) {
             console.error(e);
@@ -127,10 +194,59 @@ class AdminPanel {
 
     static async createCheckpoint(facilityId, name) {
         try {
-            await ApiService.request('/admin/checkpoints', 'POST', { facility_id: facilityId, name });
+            const unique_code = Math.random().toString(36).substring(2, 15);
+            await ApiService.insert('checkpoints', { facility_id: facilityId, name: name, unique_code: unique_code });
             await this.loadCheckpoints(facilityId);
         } catch (e) {
             alert('Error: ' + e.message);
+        }
+    }
+
+    static async loadRoutes(facilityId) {
+        const listEl = document.getElementById('routes-list');
+        listEl.innerHTML = '<p>Cargando rondas...</p>';
+        
+        try {
+            const routes = await ApiService.fetch('routes', { facility_id: facilityId });
+            
+            // Para demo: como no hay JOIN automático sin sintaxis compleja en Supabase-JS básico
+            // iteramos sobre las rutas para cargar los nombres de los puntos.
+            for (let r of routes) {
+                if(supabase) {
+                    const { data: routePoints } = await supabase
+                        .from('route_points')
+                        .select('sequence_order, checkpoints(name)')
+                        .eq('route_id', r.id)
+                        .order('sequence_order', { ascending: true });
+                    
+                    r.points = routePoints ? routePoints.map(rp => ({name: rp.checkpoints.name})) : [];
+                } else {
+                    r.points = [];
+                }
+            }
+
+            if (routes.length === 0) {
+                listEl.innerHTML = '<p>No hay rondas configuradas.</p>';
+                return;
+            }
+
+            listEl.innerHTML = `
+                <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: var(--space-4);">
+                    ${routes.map(r => `
+                        <div class="glass-surface">
+                            <h3 style="margin-bottom: var(--space-2);">${r.name}</h3>
+                            <p style="font-size: 0.9rem; margin-bottom: var(--space-2);"><strong>Hora:</strong> ${r.schedule_time}</p>
+                            <p style="font-size: 0.9rem; margin-bottom: var(--space-2);"><strong>Puntos (${r.points.length}):</strong></p>
+                            <ol style="padding-left: var(--space-4); font-size: 0.85rem;">
+                                ${r.points.map(p => `<li>${p.name}</li>`).join('')}
+                            </ol>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+        } catch (e) {
+            console.error(e);
+            listEl.innerHTML = '<p>Error al cargar rondas.</p>';
         }
     }
 }

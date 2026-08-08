@@ -28,7 +28,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (loginForm) {
         loginForm.addEventListener('submit', async (e) => {
             e.preventDefault();
-            const rut = document.getElementById('rut').value;
+            const email = document.getElementById('email').value;
             const password = document.getElementById('password').value;
             
             const btn = loginForm.querySelector('button');
@@ -36,7 +36,7 @@ document.addEventListener('DOMContentLoaded', () => {
             btn.textContent = 'Cargando...';
             btn.disabled = true;
 
-            const user = await Auth.login(rut, password);
+            const user = await Auth.login(email, password);
             
             if (user) {
                 if (user.role === 'guard') {
