@@ -1,0 +1,16 @@
+# Configuración IDE / Sistema
+.DS_Store
+.vscode/
+.idea/
+
+# Base de datos (No subir credenciales en producción)
+# api/config/config.php # (Descomentar en producción para no subir contraseñas)
+
+# Archivos temporales o de subidas
+uploads/incidents/photos/*
+!uploads/incidents/photos/.gitkeep
+uploads/incidents/audio/*
+!uploads/incidents/audio/.gitkeep
+
+# Logs
+*.log
