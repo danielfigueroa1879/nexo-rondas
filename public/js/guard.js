@@ -81,6 +81,8 @@ class GuardApp {
         });
     }
 
+    static allAssignedRoutes = [];
+
     static async checkAssignedRounds() {
         if (!supabaseClient) {
             this.showNoRounds();
@@ -88,60 +90,125 @@ class GuardApp {
         }
 
         try {
-            document.getElementById('guard-status-text').textContent = "Buscando rondas pendientes...";
+            document.getElementById('guard-status-text').textContent = "Buscando rondas asignadas...";
             
             // Lógica simplificada: obtener todas las rutas.
-            const allRoutes = await ApiService.fetch('routes');
-            // Filtrar las que ya completamos en esta sesión
-            const routes = allRoutes.filter(r => !this.completedRouteIds.includes(r.id));
+            const routes = await ApiService.fetch('routes');
             
             if (routes && routes.length > 0) {
-                // Seleccionamos la primera ruta disponible para demo
-                this.activeRoute = routes[0];
-                
-                // Obtener los puntos de la ruta en orden estricto
-                const { data: routePoints } = await supabaseClient
-                    .from('route_points')
-                    .select('sequence_order, checkpoints(id, name, unique_code)')
-                    .eq('route_id', this.activeRoute.id)
-                    .order('sequence_order', { ascending: true });
-
-                this.activeRoute.points = routePoints || [];
-                
-                if (this.activeRoute.points.length > 0) {
-                    this.setTrafficLight('pending', this.activeRoute.name);
-                    
-                    document.getElementById('no-rounds-info').style.display = 'none';
-                    document.getElementById('active-round-info').style.display = 'flex';
-                    document.getElementById('guard-bottom-nav').style.display = 'flex';
-                    document.getElementById('guard-progress-container').style.display = 'block';
-                    
-                    document.getElementById('scanner-container').style.display = 'none';
-                    document.getElementById('between-points-info').style.display = 'none';
-                    document.getElementById('pre-scan-info').style.display = 'block';
-                    
-                    document.getElementById('btn-cancel-scan').style.display = 'none';
-                    document.getElementById('btn-continue-scan').style.display = 'none';
-                    document.getElementById('btn-start-scan-first').style.display = 'flex';
-                    
-                    document.getElementById('current-route-name-top').textContent = this.activeRoute.name;
-                    this.currentSequenceIndex = 0;
-                    this.updateProgressBar();
-
-                    if (this.activeRoute.points.length > 0) {
-                        const firstPoint = this.activeRoute.points[0].checkpoints;
-                        document.getElementById('initial-checkpoint-name').textContent = firstPoint.name;
-                    }
-                } else {
-                    this.showNoRounds();
-                }
+                this.allAssignedRoutes = routes;
+                this.renderRoundsMenu();
             } else {
                 this.showNoRounds();
             }
 
-        } catch (error) {
-            console.error(error);
-            document.getElementById('guard-status-text').textContent = "Error de conexión.";
+        } catch (e) {
+            console.error("Error al obtener rondas", e);
+            this.showNoRounds();
+        }
+    }
+
+    static renderRoundsMenu() {
+        document.getElementById('no-rounds-info').style.display = 'none';
+        document.getElementById('active-round-info').style.display = 'none';
+        document.getElementById('guard-bottom-nav').style.display = 'none';
+        document.getElementById('guard-progress-container').style.display = 'none';
+        document.getElementById('rounds-menu-container').style.display = 'block';
+
+        const listContainer = document.getElementById('rounds-list');
+        listContainer.innerHTML = '';
+
+        this.allAssignedRoutes.forEach((route, index) => {
+            const isCompleted = this.completedRouteIds.includes(route.id);
+            const isActive = (this.activeRoute && this.activeRoute.id === route.id);
+            
+            let status = 'pending';
+            if (isCompleted) status = 'completed';
+            else if (isActive) {
+                const elapsed = Date.now() - this.roundStartTime;
+                if (elapsed > 60 * 60 * 1000) status = 'overdue';
+                else status = 'in_progress';
+            }
+
+            // Hora de vencimiento simulada: la hora actual + (index+1) horas.
+            const expirationTime = new Date();
+            expirationTime.setHours(expirationTime.getHours() + (index + 1));
+            const timeStr = expirationTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+            const btn = document.createElement('button');
+            btn.className = 'round-btn';
+            
+            let statusText = '';
+            if (status === 'pending') {
+                btn.classList.add('traffic-red');
+                statusText = `Pendiente - Vence ${timeStr}`;
+            } else if (status === 'in_progress') {
+                btn.classList.add('traffic-yellow');
+                statusText = `En Curso`;
+            } else if (status === 'overdue') {
+                btn.classList.add('traffic-red');
+                statusText = `Atrasada - Venció ${timeStr}`;
+            } else if (status === 'completed') {
+                btn.classList.add('traffic-green');
+                statusText = `Completada`;
+                btn.style.cursor = 'default';
+            }
+
+            btn.innerHTML = `
+                <span>${route.name}</span>
+                <span class="traffic-status">${statusText}</span>
+            `;
+
+            btn.onclick = () => {
+                if (!isCompleted) this.selectRoute(route);
+            };
+
+            listContainer.appendChild(btn);
+        });
+    }
+
+    static async selectRoute(route) {
+        try {
+            this.activeRoute = route;
+            
+            // Obtener los puntos de la ruta en orden estricto
+            const { data: routePoints } = await supabaseClient
+                .from('route_points')
+                .select('sequence_order, checkpoints(id, name, unique_code)')
+                .eq('route_id', this.activeRoute.id)
+                .order('sequence_order', { ascending: true });
+
+            this.activeRoute.points = routePoints || [];
+            
+            if (this.activeRoute.points.length > 0) {
+                document.getElementById('rounds-menu-container').style.display = 'none';
+                document.getElementById('active-round-info').style.display = 'flex';
+                document.getElementById('guard-bottom-nav').style.display = 'flex';
+                document.getElementById('guard-progress-container').style.display = 'block';
+                
+                document.getElementById('scanner-container').style.display = 'none';
+                document.getElementById('between-points-info').style.display = 'none';
+                document.getElementById('pre-scan-info').style.display = 'block';
+                
+                document.getElementById('btn-cancel-scan').style.display = 'none';
+                document.getElementById('btn-continue-scan').style.display = 'none';
+                document.getElementById('btn-start-scan-first').style.display = 'flex';
+                
+                document.getElementById('current-route-name-top').textContent = this.activeRoute.name;
+                this.currentSequenceIndex = 0;
+                this.updateProgressBar();
+
+                if (this.activeRoute.points.length > 0) {
+                    const firstPoint = this.activeRoute.points[0].checkpoints;
+                    document.getElementById('initial-checkpoint-name').textContent = firstPoint.name;
+                }
+            } else {
+                alert("Esta ruta no tiene puntos configurados.");
+                this.renderRoundsMenu();
+            }
+        } catch(e) {
+            console.error("Error al seleccionar ruta", e);
+            alert("Error al cargar la ruta.");
         }
     }
 
@@ -158,9 +225,7 @@ class GuardApp {
     }
 
     static async startRound() {
-        this.setTrafficLight('in_progress', this.activeRoute.name);
         this.roundStartTime = Date.now();
-        this.startTrafficTimer();
 
         // Registrar inicio de ronda en la BD
         const user = Auth.getUser();
@@ -284,9 +349,6 @@ class GuardApp {
     }
 
     static async completeRound() {
-        if (this.trafficTimer) clearInterval(this.trafficTimer);
-        this.setTrafficLight('completed', this.activeRoute.name);
-        
         if (this.html5QrcodeScanner) {
             this.html5QrcodeScanner.clear();
         }
@@ -317,40 +379,8 @@ class GuardApp {
         }, 4000);
     }
 
-    static setTrafficLight(status, name) {
-        const banner = document.getElementById('round-traffic-light');
-        const nameEl = document.getElementById('traffic-round-name');
-        const statusEl = document.getElementById('traffic-round-status');
-        
-        nameEl.textContent = name;
-        banner.className = 'traffic-banner';
-        
-        if (status === 'pending') {
-            banner.classList.add('traffic-red');
-            statusEl.textContent = 'Pendiente';
-        } else if (status === 'in_progress') {
-            banner.classList.add('traffic-yellow');
-            statusEl.textContent = 'En Curso';
-        } else if (status === 'overdue') {
-            banner.classList.add('traffic-red');
-            statusEl.textContent = 'Atrasada';
-        } else if (status === 'completed') {
-            banner.classList.add('traffic-green');
-            statusEl.textContent = 'Completada';
-        }
-    }
-
-    static startTrafficTimer() {
-        if (this.trafficTimer) clearInterval(this.trafficTimer);
-        this.trafficTimer = setInterval(() => {
-            if (this.roundStartTime) {
-                const elapsed = Date.now() - this.roundStartTime;
-                if (elapsed > 60 * 60 * 1000) { // 1 hora
-                    this.setTrafficLight('overdue', this.activeRoute.name);
-                }
-            }
-        }, 30000); // Check every 30s
-    }
+    // Traffic timer is no longer needed globally since buttons are rendered on menu load.
+    // If you need real-time button updates, you could use a setInterval that calls renderRoundsMenu()
 
     static async reportIncident() {
         const desc = document.getElementById('incident-desc').value;

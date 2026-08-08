@@ -181,14 +181,16 @@
                     <button class="btn btn-primary mt-4" onclick="GuardApp.checkAssignedRounds()">Refrescar</button>
                 </div>
 
+                <!-- Rounds Menu Flow -->
+                <div id="rounds-menu-container" style="display: block; width: 100%; margin-top: var(--space-4);">
+                    <h2 class="text-center" style="margin-bottom: var(--space-6);">Rondas Asignadas</h2>
+                    <!-- Dynamic buttons will be injected here -->
+                    <div id="rounds-list" style="display: flex; flex-direction: column; gap: var(--space-4);">
+                    </div>
+                </div>
+
                 <!-- Active Round Flow -->
                 <div id="active-round-info" style="display: none; height: 100%; flex-direction: column; justify-content: center;">
-                    
-                    <!-- Traffic Light Banner -->
-                    <div id="round-traffic-light" class="traffic-banner traffic-red">
-                        <span id="traffic-round-name">Ronda X</span>
-                        <span id="traffic-round-status" class="traffic-status">Pendiente</span>
-                    </div>
 
                     <!-- Pre-Scan / Next Point Info -->
                     <div id="pre-scan-info" class="guard-status-card" style="display: none;">
