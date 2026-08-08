@@ -2,7 +2,7 @@
 class Auth {
     static async login(email, password) {
         // MODO DEMO: Si no hay credenciales reales de Supabase configuradas, permite el acceso para ver la interfaz
-        if (SUPABASE_URL === 'TU_SUPABASE_URL_AQUI') {
+        if (window.SUPABASE_URL === 'TU_SUPABASE_URL_AQUI') {
             console.warn("MODO DEMO ACTIVADO: Usando datos simulados porque no hay Supabase configurado.");
             const isGuard = email.includes('guardia');
             const demoUser = {

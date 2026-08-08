@@ -36,19 +36,26 @@ document.addEventListener('DOMContentLoaded', () => {
             btn.textContent = 'Cargando...';
             btn.disabled = true;
 
-            const user = await Auth.login(email, password);
-            
-            if (user) {
-                if (user.role === 'guard') {
-                    showView('view-guard');
-                } else {
-                    showView('view-dashboard');
-                    document.getElementById('user-name').textContent = user.name;
+            try {
+                const user = await Auth.login(email, password);
+                
+                if (user) {
+                    if (user.role === 'guard') {
+                        showView('view-guard');
+                        if (typeof GuardApp !== 'undefined') GuardApp.init();
+                    } else {
+                        showView('view-dashboard');
+                        document.getElementById('user-name').textContent = user.name;
+                        if (typeof AdminPanel !== 'undefined') AdminPanel.init();
+                    }
                 }
+            } catch (err) {
+                console.error(err);
+                alert("Error al iniciar sesión: " + err.message);
+            } finally {
+                btn.textContent = originalText;
+                btn.disabled = false;
             }
-            
-            btn.textContent = originalText;
-            btn.disabled = false;
         });
     }
 
