@@ -166,13 +166,20 @@
                 <div id="active-round-info" class="glass-surface w-100 mb-4" style="width: 100%; display: none;">
                     <h2 id="current-route-name" class="text-center">Ronda Activa</h2>
                     
-                    <div id="scanner-container">
+                    <div id="pre-scan-info" style="display: none; text-align: center; margin-bottom: var(--space-4);">
+                        <p style="font-size: 1.1rem; color: var(--text-color); margin-bottom: var(--space-2);">Diríjase al punto inicial de la ronda:</p>
+                        <h2 id="initial-checkpoint-name" style="color: var(--primary-color); font-size: 1.5rem; margin-top: 0; margin-bottom: var(--space-6);">Cargando...</h2>
+                        <button id="btn-start-scan-first" class="btn btn-primary btn-block" style="padding: var(--space-4); font-size: 1.1rem;">📷 Iniciar Escaneo Inicial</button>
+                    </div>
+
+                    <div id="scanner-container" style="display: none;">
                         <div style="background: var(--warning-color); color: white; padding: var(--space-2); border-radius: var(--radius-md); text-align: center; margin-bottom: var(--space-4);">
                             <strong>Punto a Escanear:</strong> <br>
                             <span id="next-checkpoint-name" style="font-size: 1.2rem;">Cargando...</span>
                         </div>
                         <div id="qr-reader" style="width: 100%; max-width: 400px; margin: 0 auto; overflow: hidden; border-radius: var(--radius-md); border: 2px solid var(--primary-color);"></div>
                         <p class="text-center mt-4" style="font-size: 0.85rem; color: var(--text-secondary);">La cámara escaneará automáticamente el QR cuando lo enfoques.</p>
+                        <button id="btn-cancel-scan" class="btn btn-block mt-4" style="border: 1px solid var(--danger-color); color: var(--danger-color); background: transparent;">Cerrar Cámara</button>
                     </div>
 
                     <div id="between-points-info" style="display: none; text-align: center;">

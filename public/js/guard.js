@@ -29,6 +29,25 @@ class GuardApp {
             this.initScanner();
         });
 
+        document.getElementById('btn-start-scan-first')?.addEventListener('click', () => {
+            document.getElementById('pre-scan-info').style.display = 'none';
+            document.getElementById('scanner-container').style.display = 'block';
+            this.updateUIForNextPoint();
+            this.initScanner();
+        });
+
+        document.getElementById('btn-cancel-scan')?.addEventListener('click', () => {
+            if (this.html5QrcodeScanner) {
+                try { this.html5QrcodeScanner.clear(); } catch(e) {}
+            }
+            document.getElementById('scanner-container').style.display = 'none';
+            if (this.currentSequenceIndex === 0) {
+                document.getElementById('pre-scan-info').style.display = 'block';
+            } else {
+                document.getElementById('between-points-info').style.display = 'block';
+            }
+        });
+
         document.getElementById('form-incident')?.addEventListener('submit', async (e) => {
             e.preventDefault();
             await this.reportIncident();
@@ -93,11 +112,18 @@ class GuardApp {
         document.getElementById('active-round-info').style.display = 'block';
         document.getElementById('btn-report-incident').style.display = 'block';
         
-        document.getElementById('scanner-container').style.display = 'block';
+        document.getElementById('scanner-container').style.display = 'none';
         document.getElementById('between-points-info').style.display = 'none';
+        document.getElementById('pre-scan-info').style.display = 'block';
         
         document.getElementById('current-route-name').textContent = this.activeRoute.name;
         this.currentSequenceIndex = 0;
+
+        // Configurar el nombre del punto inicial
+        if (this.activeRoute.points.length > 0) {
+            const firstPoint = this.activeRoute.points[0].checkpoints;
+            document.getElementById('initial-checkpoint-name').textContent = firstPoint.name;
+        }
 
         // Registrar inicio de ronda en la BD
         const user = Auth.getUser();
@@ -113,9 +139,6 @@ class GuardApp {
         } catch (e) {
             console.error("No se pudo registrar la ejecución", e);
         }
-
-        this.updateUIForNextPoint();
-        this.initScanner();
     }
 
     static updateUIForNextPoint() {
