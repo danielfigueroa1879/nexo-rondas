@@ -9,6 +9,9 @@
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
     <!-- Supabase SDK -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- PDF Libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
 </head>
 <body>
     <div class="app-wrapper container">
@@ -40,16 +43,48 @@
             </form>
         </main>
 
-        <!-- Dashboard View (Supervisor/Admin) -->
-        <main id="view-dashboard" class="view">
-            <header class="dashboard-header glass-surface mb-4" style="display: flex; justify-content: space-between; align-items: center; padding: var(--space-4) var(--space-6);">
+        <!-- Dashboard View (Admin & Supervisor) -->
+        <main id="view-dashboard" class="view" style="display: none;">
+            <header class="glass-surface" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-6);">
                 <div>
-                    <h1>Panel de Control</h1>
-                    <p style="margin:0;">Bienvenido, <span id="user-name">Usuario</span></p>
+                    <h1>NEXO Rondas</h1>
+                    <p>Bienvenido, <span id="user-name">Usuario</span></p>
                 </div>
-                <button id="btn-logout" class="btn btn-primary">Cerrar Sesión</button>
+                <div>
+                    <button class="btn btn-primary" onclick="window.print()" style="margin-right: var(--space-2);">🖨️ Imprimir QRs</button>
+                    <button id="btn-logout" class="btn" style="border: 1px solid var(--danger-color); color: var(--danger-color);">Cerrar Sesión</button>
+                </div>
             </header>
 
+            <!-- MONITOR DE RONDAS (TIEMPO REAL) -->
+            <div class="glass-surface mb-6">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-4);">
+                    <h2 style="margin: 0;">Monitor en Tiempo Real 📡</h2>
+                    <button id="btn-generate-report" class="btn btn-primary" style="background-color: var(--secondary-color);">Descargar Reporte PDF</button>
+                </div>
+                
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--space-4); margin-bottom: var(--space-4);">
+                    <div style="background: rgba(46, 204, 113, 0.1); border-left: 4px solid var(--secondary-color); padding: var(--space-4); border-radius: var(--radius-sm);">
+                        <h3 style="margin: 0; font-size: 0.9rem; color: var(--text-secondary);">Rondas Activas</h3>
+                        <p id="stat-active" style="font-size: 2rem; font-weight: bold; margin: 0; color: var(--secondary-color);">0</p>
+                    </div>
+                    <div style="background: rgba(231, 76, 60, 0.1); border-left: 4px solid var(--danger-color); padding: var(--space-4); border-radius: var(--radius-sm);">
+                        <h3 style="margin: 0; font-size: 0.9rem; color: var(--text-secondary);">Rondas Atrasadas</h3>
+                        <p id="stat-delayed" style="font-size: 2rem; font-weight: bold; margin: 0; color: var(--danger-color);">0</p>
+                    </div>
+                    <div style="background: rgba(241, 196, 15, 0.1); border-left: 4px solid var(--warning-color); padding: var(--space-4); border-radius: var(--radius-sm);">
+                        <h3 style="margin: 0; font-size: 0.9rem; color: var(--text-secondary);">Incidentes Hoy</h3>
+                        <p id="stat-incidents" style="font-size: 2rem; font-weight: bold; margin: 0; color: var(--warning-color);">0</p>
+                    </div>
+                </div>
+
+                <div id="live-rounds-container" style="max-height: 400px; overflow-y: auto; background: var(--bg-color); padding: var(--space-4); border-radius: var(--radius-md); border: 1px solid var(--surface-border);">
+                    <p class="text-center text-secondary">Cargando datos en vivo...</p>
+                </div>
+            </div>
+
+            <hr style="margin: var(--space-6) 0; border: 0; border-top: 1px solid var(--surface-border);">
+            
             <div class="glass-surface">
                 <h2>Gestión de Instalaciones</h2>
                 
@@ -181,6 +216,7 @@
     <script src="js/api.js"></script>
     <script src="js/auth.js"></script>
     <script src="js/admin.js"></script>
+    <script src="js/supervisor.js"></script>
     <script src="js/guard.js"></script>
     <script src="js/app.js"></script>
 </body>

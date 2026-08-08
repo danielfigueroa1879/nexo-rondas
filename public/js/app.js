@@ -47,6 +47,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         showView('view-dashboard');
                         document.getElementById('user-name').textContent = user.name;
                         if (typeof AdminPanel !== 'undefined') AdminPanel.init();
+                        if (typeof SupervisorDashboard !== 'undefined') SupervisorDashboard.init();
                     }
                 }
             } catch (err) {
