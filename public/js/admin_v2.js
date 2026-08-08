@@ -4,130 +4,167 @@ class AdminPanel {
         const user = Auth.getUser();
         if (!user || (user.role !== 'admin' && user.role !== 'superadmin' && user.role !== 'supervisor')) return;
 
-        // Simplified for demo: assume company ID 1 exists or we create it.
-        // In a real flow, we'd list companies first.
-        
-        await this.loadFacilities(1); // Hardcoded to company 1 for demo purposes
-        
+        // ─── PASO 1: Registrar todos los event listeners PRIMERO (sincrono) ───
+        this._setupEventListeners();
+
+        // ─── PASO 2: Cargar datos en segundo plano ───
+        this.renderGuardsList();
+        try {
+            await this.loadFacilities(1);
+        } catch(e) {
+            console.warn('No se pudieron cargar instalaciones:', e.message);
+        }
+    }
+
+    static _setupEventListeners() {
+        // Evitar doble registro de listeners
+        if (this._listenersRegistered) return;
+        this._listenersRegistered = true;
+
+        // Selector de instalación
         const facilitySelect = document.getElementById('select-facility');
         if (facilitySelect) {
             facilitySelect.addEventListener('change', async (e) => {
                 const facilityId = e.target.value;
                 if (facilityId) {
-                    document.getElementById('btn-new-checkpoint').classList.remove('hidden');
-                    document.getElementById('btn-new-route').classList.remove('hidden');
-                    await this.loadCheckpoints(facilityId);
-                    await this.loadRoutes(facilityId);
+                    document.getElementById('btn-new-checkpoint')?.classList.remove('hidden');
+                    document.getElementById('btn-new-route')?.classList.remove('hidden');
+                    try { await this.loadCheckpoints(facilityId); } catch(e) {}
+                    try { await this.loadRoutes(facilityId); } catch(e) {}
                 } else {
-                    document.getElementById('btn-new-checkpoint').classList.add('hidden');
-                    document.getElementById('btn-new-route').classList.add('hidden');
-                    document.getElementById('checkpoints-list').innerHTML = '<p>Selecciona una instalación para ver sus puntos.</p>';
-                    document.getElementById('routes-list').innerHTML = '<p>Selecciona una instalación para ver sus rondas.</p>';
+                    document.getElementById('btn-new-checkpoint')?.classList.add('hidden');
+                    document.getElementById('btn-new-route')?.classList.add('hidden');
+                    const cpList = document.getElementById('checkpoints-list');
+                    const rtList = document.getElementById('routes-list');
+                    if (cpList) cpList.innerHTML = '<p>Selecciona una instalación para ver sus puntos.</p>';
+                    if (rtList) rtList.innerHTML = '<p>Selecciona una instalación para ver sus rondas.</p>';
                 }
             });
         }
 
-        // --- Gestión de Guardias ---
-        this.renderGuardsList();
-        
+        // Botón: Nuevo Guardia
         document.getElementById('btn-new-guard')?.addEventListener('click', () => {
-            document.getElementById('modal-guard').style.display = 'flex';
+            const modal = document.getElementById('modal-guard');
+            if (modal) modal.style.display = 'flex';
         });
 
+        // Formulario: Guardar Guardia
         document.getElementById('form-guard')?.addEventListener('submit', (e) => {
             e.preventDefault();
-            const name = document.getElementById('guard-name').value;
-            const email = document.getElementById('guard-email').value;
-            const password = document.getElementById('guard-password').value;
-            const facilitySelect = document.getElementById('guard-facility');
-            const facilityId = facilitySelect.value;
-            const facilityName = facilitySelect.options[facilitySelect.selectedIndex].text;
+            const name = document.getElementById('guard-name').value.trim();
+            const email = document.getElementById('guard-email').value.trim();
+            const password = document.getElementById('guard-password').value.trim();
+            const facilitySelectEl = document.getElementById('guard-facility');
+            const facilityId = facilitySelectEl ? facilitySelectEl.value : '';
+            const facilityName = facilitySelectEl ? facilitySelectEl.options[facilitySelectEl.selectedIndex]?.text : '';
+
+            if (!name || !email || !password) {
+                alert('Por favor completa todos los campos.');
+                return;
+            }
 
             const guards = JSON.parse(localStorage.getItem('nexo_guards') || '[]');
-            
-            // Validar si existe el correo
             if (guards.find(g => g.email === email)) {
-                alert("Ya existe un guardia con ese correo.");
+                alert('Ya existe un guardia con ese correo.');
                 return;
             }
 
             guards.push({
                 id: 'guard-' + Date.now(),
-                name: name,
-                email: email,
-                password: password, // NOTA: Solo para propósitos de la DEMO
-                facilityId: facilityId,
-                facilityName: facilityName,
+                name, email, password,
+                facilityId, facilityName,
                 role: 'guard'
             });
             localStorage.setItem('nexo_guards', JSON.stringify(guards));
-            
-            document.getElementById('modal-guard').style.display = 'none';
+
+            const modal = document.getElementById('modal-guard');
+            if (modal) modal.style.display = 'none';
             document.getElementById('form-guard').reset();
             this.renderGuardsList();
+            alert(`Guardia "${name}" registrado exitosamente.`);
         });
 
+        // Botón: Nueva Instalación
         document.getElementById('btn-new-facility')?.addEventListener('click', () => {
-            const name = prompt("Nombre de la nueva instalación:");
-            if (name) {
-                this.createFacility(1, name);
+            const name = prompt('Nombre de la nueva instalación:');
+            if (name && name.trim()) {
+                this.createFacility(1, name.trim());
             }
         });
 
+        // Botón: Nuevo Punto de Control
         document.getElementById('btn-new-checkpoint')?.addEventListener('click', () => {
-            const facilityId = document.getElementById('select-facility').value;
-            const name = prompt("Nombre del nuevo punto de control (ej: Entrada Principal):");
-            if (name && facilityId) {
-                this.createCheckpoint(facilityId, name);
+            const facilityId = document.getElementById('select-facility')?.value;
+            if (!facilityId) {
+                alert('Selecciona primero una instalación.');
+                return;
+            }
+            const name = prompt('Nombre del nuevo punto de control (ej: Entrada Principal):');
+            if (name && name.trim()) {
+                this.createCheckpoint(facilityId, name.trim());
             }
         });
 
+        // Botón: Nueva Ronda
         document.getElementById('btn-new-route')?.addEventListener('click', () => {
-            document.getElementById('modal-route').style.display = 'flex';
+            const facilityId = document.getElementById('select-facility')?.value;
+            if (!facilityId) {
+                alert('Selecciona primero una instalación.');
+                return;
+            }
+            const modal = document.getElementById('modal-route');
+            if (modal) modal.style.display = 'flex';
         });
 
+        // Formulario: Guardar Ronda
         document.getElementById('form-route')?.addEventListener('submit', async (e) => {
             e.preventDefault();
-            const facilityId = document.getElementById('select-facility').value;
-            const name = document.getElementById('route-name').value;
+            const facilityId = document.getElementById('select-facility')?.value;
+            const name = document.getElementById('route-name').value.trim();
             const time = document.getElementById('route-time').value;
-            
-            // Get checked checkpoints in order (this is a simplified logic, in real life we might want drag&drop for ordering)
+
             const checkboxes = document.querySelectorAll('input[name="route-checkpoint"]:checked');
             const points = Array.from(checkboxes).map(cb => parseInt(cb.value));
 
             if (points.length === 0) {
-                alert("Debes seleccionar al menos un punto para la ronda.");
+                alert('Debes seleccionar al menos un punto para la ronda.');
                 return;
             }
 
             try {
-                // En Supabase, para rutas, insertamos la ruta, luego obtenemos el ID y luego insertamos los puntos
                 const [routeData] = await ApiService.insert('routes', {
                     facility_id: facilityId,
                     name: name,
                     schedule_time: time
                 });
-                
+
                 const routeId = routeData.id;
-                
                 const routePointsPayload = points.map((checkpointId, index) => ({
                     route_id: routeId,
                     checkpoint_id: checkpointId,
                     sequence_order: index + 1
                 }));
-                
-                // Inserta los puntos en lote
+
                 if (supabaseClient) {
                     await supabaseClient.from('route_points').insert(routePointsPayload);
                 }
 
-                document.getElementById('modal-route').style.display = 'none';
+                const modal = document.getElementById('modal-route');
+                if (modal) modal.style.display = 'none';
                 document.getElementById('form-route').reset();
                 await this.loadRoutes(facilityId);
             } catch (err) {
-                alert('Error al crear ruta: ' + err.message);
+                alert('Error al crear ronda: ' + err.message);
             }
+        });
+
+        // Cerrar modales con botón Cancelar
+        document.querySelectorAll('[data-close-modal]').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const modalId = btn.getAttribute('data-close-modal');
+                const modal = document.getElementById(modalId);
+                if (modal) modal.style.display = 'none';
+            });
         });
     }
 
@@ -300,6 +337,36 @@ class AdminPanel {
             console.error(e);
             listEl.innerHTML = '<p>Error al cargar rondas.</p>';
         }
+    }
+    static renderGuardsList() {
+        const listEl = document.getElementById('guards-list');
+        if (!listEl) return;
+
+        const guards = JSON.parse(localStorage.getItem('nexo_guards') || '[]');
+
+        if (guards.length === 0) {
+            listEl.innerHTML = '<p style="color:var(--text-secondary); text-align:center; padding: var(--space-4);">No hay guardias registrados. Presiona "+ Registrar Nuevo Guardia" para agregar uno.</p>';
+            return;
+        }
+
+        listEl.innerHTML = guards.map(g => `
+            <div style="display:flex; justify-content:space-between; align-items:center; background:var(--surface-bg); border:1px solid var(--surface-border); border-radius:var(--radius-sm); padding:var(--space-3); margin-bottom:var(--space-2);">
+                <div>
+                    <strong style="display:block; font-size:1rem;">${g.name}</strong>
+                    <span style="font-size:0.8rem; color:var(--text-secondary);">${g.email}</span>
+                    ${g.facilityName ? `<span style="font-size:0.75rem; color:var(--primary-color); display:block; margin-top:2px;">📍 ${g.facilityName}</span>` : ''}
+                </div>
+                <button onclick="AdminPanel.deleteGuard('${g.id}')" style="background:var(--danger-color); color:white; border:none; border-radius:var(--radius-sm); padding:6px 12px; cursor:pointer; font-size:0.8rem;">Eliminar</button>
+            </div>
+        `).join('');
+    }
+
+    static deleteGuard(guardId) {
+        if (!confirm('¿Estás seguro de que deseas eliminar este guardia?')) return;
+        let guards = JSON.parse(localStorage.getItem('nexo_guards') || '[]');
+        guards = guards.filter(g => g.id !== guardId);
+        localStorage.setItem('nexo_guards', JSON.stringify(guards));
+        this.renderGuardsList();
     }
 }
 
