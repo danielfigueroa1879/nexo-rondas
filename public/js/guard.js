@@ -27,7 +27,10 @@ class GuardApp {
     }
 
     static async checkAssignedRounds() {
-        if (!supabase) return;
+        if (!supabaseClient) {
+            this.showNoRounds();
+            return;
+        }
 
         try {
             document.getElementById('guard-status-text').textContent = "Buscando rondas pendientes...";
@@ -41,7 +44,7 @@ class GuardApp {
                 this.activeRoute = routes[0];
                 
                 // Obtener los puntos de la ruta en orden estricto
-                const { data: routePoints } = await supabase
+                const { data: routePoints } = await supabaseClient
                     .from('route_points')
                     .select('sequence_order, checkpoints(id, name, unique_code)')
                     .eq('route_id', this.activeRoute.id)
@@ -178,8 +181,8 @@ class GuardApp {
         }
 
         // Marcar como completada en BD
-        if (this.activeRoundExecutionId) {
-            await supabase.from('round_executions')
+        if (this.activeRoundExecutionId && supabaseClient) {
+            await supabaseClient.from('round_executions')
                 .update({ end_time: new Date().toISOString(), status: 'completed' })
                 .eq('id', this.activeRoundExecutionId);
         }
@@ -201,18 +204,18 @@ class GuardApp {
 
         try {
             // Subir foto si existe
-            if (photoInput.files.length > 0) {
+            if (photoInput.files.length > 0 && supabaseClient) {
                 const file = photoInput.files[0];
                 const fileExt = file.name.split('.').pop();
                 const fileName = `${Math.random()}.${fileExt}`;
                 const filePath = `${user.id}/${fileName}`;
 
-                const { error: uploadError } = await supabase.storage
+                const { error: uploadError } = await supabaseClient.storage
                     .from('incidents')
                     .upload(filePath, file);
 
                 if (!uploadError) {
-                    const { data } = supabase.storage.from('incidents').getPublicUrl(filePath);
+                    const { data } = supabaseClient.storage.from('incidents').getPublicUrl(filePath);
                     photoUrl = data.publicUrl;
                 }
             }

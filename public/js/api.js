@@ -5,22 +5,26 @@ window.SUPABASE_URL = 'TU_SUPABASE_URL_AQUI';
 window.SUPABASE_KEY = 'TU_SUPABASE_ANON_KEY_AQUI';
 
 // Inicializa el cliente global (disponible en ventana porque cargamos el CDN en index.html)
-let supabase = null;
+// Usamos otro nombre para evitar colisionar con el objeto global window.supabase
+let supabaseClient = null;
 
-if (window.supabase) {
-    supabase = window.supabase.createClient(window.SUPABASE_URL, window.SUPABASE_KEY);
+if (window.supabase && window.SUPABASE_URL.startsWith('http')) {
+    try {
+        supabaseClient = window.supabase.createClient(window.SUPABASE_URL, window.SUPABASE_KEY);
+    } catch(e) {
+        console.warn("No se pudo inicializar Supabase:", e);
+    }
 }
 
 class ApiService {
     // Wrapper genérico para las tablas
     static async fetch(table, match = null) {
-        if (window.SUPABASE_URL === 'TU_SUPABASE_URL_AQUI') {
+        if (!supabaseClient) {
             console.log(`[Demo] Simulando fetch a tabla: ${table}`);
             return []; // Devuelve arreglo vacío en modo demo
         }
 
-        if (!supabase) throw new Error("Supabase no está configurado.");
-        let query = supabase.from(table).select('*');
+        let query = supabaseClient.from(table).select('*');
         if (match) {
             query = query.match(match);
         }
@@ -30,13 +34,12 @@ class ApiService {
     }
 
     static async insert(table, payload) {
-        if (window.SUPABASE_URL === 'TU_SUPABASE_URL_AQUI') {
+        if (!supabaseClient) {
             console.log(`[Demo] Simulando insert a tabla: ${table}`, payload);
             return [{ id: Math.floor(Math.random() * 1000), ...payload }];
         }
 
-        if (!supabase) throw new Error("Supabase no está configurado.");
-        const { data, error } = await supabase.from(table).insert([payload]).select();
+        const { data, error } = await supabaseClient.from(table).insert([payload]).select();
         if (error) throw error;
         return data;
     }

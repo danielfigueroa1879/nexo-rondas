@@ -2,7 +2,7 @@
 class Auth {
     static async login(email, password) {
         // MODO DEMO: Si no hay credenciales reales de Supabase configuradas, permite el acceso para ver la interfaz
-        if (window.SUPABASE_URL === 'TU_SUPABASE_URL_AQUI') {
+        if (!supabaseClient) {
             console.warn("MODO DEMO ACTIVADO: Usando datos simulados porque no hay Supabase configurado.");
             const isGuard = email.includes('guardia');
             const demoUser = {
@@ -16,7 +16,7 @@ class Auth {
         }
 
         try {
-            const { data, error } = await supabase.auth.signInWithPassword({
+            const { data, error } = await supabaseClient.auth.signInWithPassword({
                 email: email, 
                 password: password,
             });
@@ -24,7 +24,7 @@ class Auth {
             if (error) throw error;
             
             // Get user role from a custom table 'users' linked to auth.users
-            const { data: profile } = await supabase
+            const { data: profile } = await supabaseClient
                 .from('users')
                 .select('*')
                 .eq('id', data.user.id)
@@ -47,8 +47,8 @@ class Auth {
     }
 
     static async logout() {
-        if (supabase) {
-            await supabase.auth.signOut();
+        if (supabaseClient) {
+            await supabaseClient.auth.signOut();
         }
         localStorage.removeItem('nexo_user');
         window.location.reload();

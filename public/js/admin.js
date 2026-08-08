@@ -78,8 +78,8 @@ class AdminPanel {
                 }));
                 
                 // Inserta los puntos en lote
-                if (supabase) {
-                    await supabase.from('route_points').insert(routePointsPayload);
+                if (supabaseClient) {
+                    await supabaseClient.from('route_points').insert(routePointsPayload);
                 }
 
                 document.getElementById('modal-route').style.display = 'none';
@@ -212,8 +212,8 @@ class AdminPanel {
             // Para demo: como no hay JOIN automático sin sintaxis compleja en Supabase-JS básico
             // iteramos sobre las rutas para cargar los nombres de los puntos.
             for (let r of routes) {
-                if(supabase) {
-                    const { data: routePoints } = await supabase
+                if(supabaseClient) {
+                    const { data: routePoints } = await supabaseClient
                         .from('route_points')
                         .select('sequence_order, checkpoints(name)')
                         .eq('route_id', r.id)
