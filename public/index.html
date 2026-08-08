@@ -86,6 +86,15 @@
             <hr style="margin: var(--space-6) 0; border: 0; border-top: 1px solid var(--surface-border);">
             
             <div class="glass-surface">
+                <h2>Gestión de Personal (Guardias)</h2>
+                <div class="form-group">
+                    <button id="btn-new-guard" class="btn btn-primary mb-4">+ Registrar Nuevo Guardia</button>
+                </div>
+                <div id="guards-list" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: var(--space-4);">
+                    <p class="text-secondary">No hay guardias registrados.</p>
+                </div>
+                <hr style="margin: var(--space-6) 0; border: 0; border-top: 1px solid var(--surface-border);">
+
                 <h2>Gestión de Instalaciones</h2>
                 
                 <div class="form-group">
@@ -152,12 +161,43 @@
             </div>
         </div>
 
+        <!-- Modal para Nuevo Guardia -->
+        <div id="modal-guard" class="view" style="position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 100; display: none; align-items: center; justify-content: center;">
+            <div class="glass-surface" style="width: 100%; max-width: 500px; max-height: 90vh; overflow-y: auto;">
+                <h3>Registrar Guardia</h3>
+                <form id="form-guard">
+                    <div class="form-group">
+                        <label class="form-label">Nombres y Apellidos</label>
+                        <input type="text" id="guard-name" class="form-control" required placeholder="Ej: Juan Pérez">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Correo Electrónico</label>
+                        <input type="email" id="guard-email" class="form-control" required placeholder="guardia@nexo.com">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Contraseña</label>
+                        <input type="password" id="guard-password" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Instalación Asignada</label>
+                        <select id="guard-facility" class="form-control" required>
+                            <option value="">Cargando instalaciones...</option>
+                        </select>
+                    </div>
+                    <div style="display: flex; gap: var(--space-2); margin-top: var(--space-4);">
+                        <button type="button" class="btn btn-block" onclick="document.getElementById('modal-guard').style.display='none'">Cancelar</button>
+                        <button type="submit" class="btn btn-primary btn-block">Guardar</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
         <!-- Guard App View (Native Redesign) -->
         <main id="view-guard" class="view" style="display: none; flex-direction: column; height: 100vh; padding: 0; background: var(--bg-color);">
             
             <!-- Top Bar -->
             <div class="guard-top-bar">
-                <h1 id="current-route-name-top">Mis Rondas</h1>
+                <h1 id="guard-facility-name-header">Mis Rondas</h1>
                 <button id="btn-logout-guard" class="icon-btn" title="Cerrar Sesión">
                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
                 </button>
@@ -191,6 +231,11 @@
 
                 <!-- Active Round Flow -->
                 <div id="active-round-info" style="display: none; height: 100%; flex-direction: column; justify-content: center;">
+
+                    <!-- Big Round Name Banner -->
+                    <div id="active-round-title-banner" style="background: var(--surface-bg); padding: var(--space-4); text-align: center; border-radius: var(--radius-md); box-shadow: var(--shadow-sm); margin-bottom: var(--space-4); border-bottom: 4px solid var(--secondary-color);">
+                        <h2 id="active-round-name-display" style="margin: 0; color: var(--primary-color); font-size: 1.8rem; text-transform: uppercase;">RONDA X</h2>
+                    </div>
 
                     <!-- Pre-Scan / Next Point Info -->
                     <div id="pre-scan-info" class="guard-status-card" style="display: none;">

@@ -27,6 +27,46 @@ class AdminPanel {
             });
         }
 
+        // --- Gestión de Guardias ---
+        this.renderGuardsList();
+        
+        document.getElementById('btn-new-guard')?.addEventListener('click', () => {
+            document.getElementById('modal-guard').style.display = 'flex';
+        });
+
+        document.getElementById('form-guard')?.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const name = document.getElementById('guard-name').value;
+            const email = document.getElementById('guard-email').value;
+            const password = document.getElementById('guard-password').value;
+            const facilitySelect = document.getElementById('guard-facility');
+            const facilityId = facilitySelect.value;
+            const facilityName = facilitySelect.options[facilitySelect.selectedIndex].text;
+
+            const guards = JSON.parse(localStorage.getItem('nexo_guards') || '[]');
+            
+            // Validar si existe el correo
+            if (guards.find(g => g.email === email)) {
+                alert("Ya existe un guardia con ese correo.");
+                return;
+            }
+
+            guards.push({
+                id: 'guard-' + Date.now(),
+                name: name,
+                email: email,
+                password: password, // NOTA: Solo para propósitos de la DEMO
+                facilityId: facilityId,
+                facilityName: facilityName,
+                role: 'guard'
+            });
+            localStorage.setItem('nexo_guards', JSON.stringify(guards));
+            
+            document.getElementById('modal-guard').style.display = 'none';
+            document.getElementById('form-guard').reset();
+            this.renderGuardsList();
+        });
+
         document.getElementById('btn-new-facility')?.addEventListener('click', () => {
             const name = prompt("Nombre de la nueva instalación:");
             if (name) {
@@ -93,34 +133,46 @@ class AdminPanel {
 
     static async loadFacilities(companyId) {
         try {
-            // Nota: Aquí quitamos los parámetros custom y usamos el fetch genérico
             const facilities = await ApiService.fetch('facilities', { company_id: companyId });
             
-            // Populate list
             const listEl = document.getElementById('facilities-list');
-            if (facilities.length === 0) {
-                listEl.innerHTML = '<p>No hay instalaciones. Crea una para comenzar.</p>';
-            } else {
-                listEl.innerHTML = `
-                    <ul style="list-style:none; padding:0;">
-                        ${facilities.map(f => `
-                            <li style="padding: var(--space-3); border-bottom: 1px solid var(--surface-border);">
-                                <strong>${f.name}</strong>
-                            </li>
-                        `).join('')}
-                    </ul>
-                `;
-            }
-
-            // Populate select
             const selectEl = document.getElementById('select-facility');
-            if (selectEl) {
-                selectEl.innerHTML = '<option value="">Seleccione...</option>';
-                facilities.forEach(f => {
-                    selectEl.innerHTML += `<option value="${f.id}">${f.name}</option>`;
-                });
+            const guardSelectEl = document.getElementById('guard-facility');
+
+            listEl.innerHTML = '';
+            
+            if (selectEl) selectEl.innerHTML = '<option value="">Seleccione...</option>';
+            if (guardSelectEl) guardSelectEl.innerHTML = '<option value="">Seleccione...</option>';
+            
+            if (facilities.length === 0) {
+                listEl.innerHTML = '<p>No hay instalaciones registradas.</p>';
+                return;
             }
 
+            facilities.forEach(f => {
+                const div = document.createElement('div');
+                div.style.background = 'var(--surface-bg)';
+                div.style.padding = 'var(--space-4)';
+                div.style.borderRadius = 'var(--radius-sm)';
+                div.style.marginBottom = 'var(--space-2)';
+                div.style.border = '1px solid var(--surface-border)';
+                div.innerHTML = `<strong>${f.name}</strong> <span style="color:var(--text-secondary);font-size:0.8rem;margin-left:10px;">ID: ${f.id}</span>`;
+                listEl.appendChild(div);
+
+                if (selectEl) {
+                    const opt = document.createElement('option');
+                    opt.value = f.id;
+                    opt.textContent = f.name;
+                    selectEl.appendChild(opt);
+                }
+
+                if (guardSelectEl) {
+                    const optGuard = document.createElement('option');
+                    optGuard.value = f.id;
+                    optGuard.textContent = f.name;
+                    guardSelectEl.appendChild(optGuard);
+                }
+            });
         } catch (e) {
             console.error(e);
         }

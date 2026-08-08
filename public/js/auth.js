@@ -1,7 +1,23 @@
 // public/js/auth.js
 class Auth {
     static async login(email, password) {
-        // MODO DEMO: Si no hay credenciales reales de Supabase configuradas, permite el acceso para ver la interfaz
+        // MODO DEMO y Validación de Guardias Locales
+        const localGuards = JSON.parse(localStorage.getItem('nexo_guards') || '[]');
+        const matchedGuard = localGuards.find(g => g.email === email && g.password === password);
+        
+        if (matchedGuard) {
+            const userObj = {
+                id: matchedGuard.id,
+                email: matchedGuard.email,
+                role: 'guard',
+                name: matchedGuard.name,
+                facilityId: matchedGuard.facilityId,
+                facilityName: matchedGuard.facilityName
+            };
+            localStorage.setItem('nexo_user', JSON.stringify(userObj));
+            return userObj;
+        }
+
         if (!supabaseClient) {
             console.warn("MODO DEMO ACTIVADO: Usando datos simulados porque no hay Supabase configurado.");
             const isGuard = email.includes('guardia');
@@ -9,7 +25,8 @@ class Auth {
                 id: 'demo-id-123',
                 email: email,
                 role: isGuard ? 'guard' : 'admin',
-                name: isGuard ? 'Guardia Demo' : 'Administrador Demo'
+                name: isGuard ? 'Guardia Demo' : 'Administrador Demo',
+                facilityName: isGuard ? 'Instalación Demo' : ''
             };
             localStorage.setItem('nexo_user', JSON.stringify(demoUser));
             return demoUser;

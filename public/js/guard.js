@@ -11,8 +11,21 @@ class GuardApp {
     static isProcessingScan = false;
 
     static async init() {
+        // Cargar rutas completadas de localStorage
+        const savedCompleted = localStorage.getItem('nexo_completed_routes');
+        if (savedCompleted) {
+            try { this.completedRouteIds = JSON.parse(savedCompleted); } catch(e) {}
+        }
+
         const user = Auth.getUser();
         if (!user || user.role !== 'guard') return;
+
+        document.getElementById('guard-user-name').textContent = user.name || user.email;
+        
+        const facilityNameHeader = document.getElementById('guard-facility-name-header');
+        if (facilityNameHeader) {
+            facilityNameHeader.textContent = user.facilityName || 'Mis Rondas';
+        }
 
         // Mostrar vista inicial
         document.getElementById('view-guard').style.display = 'flex';
@@ -194,7 +207,11 @@ class GuardApp {
                 document.getElementById('btn-continue-scan').style.display = 'none';
                 document.getElementById('btn-start-scan-first').style.display = 'flex';
                 
-                document.getElementById('current-route-name-top').textContent = this.activeRoute.name;
+                const nameDisplay = document.getElementById('active-round-name-display');
+                if (nameDisplay) {
+                    nameDisplay.textContent = this.activeRoute.name;
+                }
+                
                 this.currentSequenceIndex = 0;
                 this.updateProgressBar();
 
@@ -366,6 +383,7 @@ class GuardApp {
         }
         
         this.completedRouteIds.push(this.activeRoute.id);
+        localStorage.setItem('nexo_completed_routes', JSON.stringify(this.completedRouteIds));
         
         // Esperar 4 segundos para celebrar antes de volver al inicio
         setTimeout(() => {
