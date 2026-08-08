@@ -5,6 +5,8 @@ class GuardApp {
     static currentSequenceIndex = 0;
     static html5QrcodeScanner = null;
     static activeRoundExecutionId = null;
+    static completedRouteIds = [];
+    static isProcessingScan = false;
 
     static async init() {
         const user = Auth.getUser();
@@ -36,8 +38,9 @@ class GuardApp {
             document.getElementById('guard-status-text').textContent = "Buscando rondas pendientes...";
             
             // Lógica simplificada: obtener todas las rutas.
-            // En un caso real filtraríamos por las asignadas al guardia actual y por horario.
-            const routes = await ApiService.fetch('routes');
+            const allRoutes = await ApiService.fetch('routes');
+            // Filtrar las que ya completamos en esta sesión
+            const routes = allRoutes.filter(r => !this.completedRouteIds.includes(r.id));
             
             if (routes && routes.length > 0) {
                 // Seleccionamos la primera ruta disponible para demo
@@ -117,7 +120,9 @@ class GuardApp {
 
     static initScanner() {
         if (this.html5QrcodeScanner) {
-            this.html5QrcodeScanner.clear();
+            try {
+                this.html5QrcodeScanner.clear();
+            } catch(e) {}
         }
 
         this.html5QrcodeScanner = new Html5QrcodeScanner(
@@ -131,7 +136,10 @@ class GuardApp {
     }
 
     static async onScanSuccess(decodedText, decodedResult) {
+        if (this.isProcessingScan) return; // Prevenir múltiples escaneos simultáneos
         if (this.currentSequenceIndex >= this.activeRoute.points.length) return;
+
+        this.isProcessingScan = true; // Bloquear nuevos escaneos
 
         const expectedPoint = this.activeRoute.points[this.currentSequenceIndex].checkpoints;
 
@@ -170,6 +178,11 @@ class GuardApp {
             // Escaneo incorrecto
             alert(`Punto Incorrecto.\nDebes escanear: ${expectedPoint.name}`);
         }
+        
+        // Liberar el bloqueo después de procesar
+        setTimeout(() => {
+            this.isProcessingScan = false;
+        }, 1500); // 1.5 segundos de cooldown entre escaneos
     }
 
     static async completeRound() {
@@ -187,7 +200,11 @@ class GuardApp {
                 .eq('id', this.activeRoundExecutionId);
         }
 
-        alert("¡Ronda completada con éxito!");
+        this.completedRouteIds.push(this.activeRoute.id);
+        
+        alert("¡Ronda Completada Exitosamente!");
+        
+        // Buscar si hay otra ronda
         this.checkAssignedRounds();
     }
 
