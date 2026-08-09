@@ -313,12 +313,22 @@ class GuardApp {
         document.getElementById('guard-progress-fill').style.width = `${percentage}%`;
     }
 
-    static initScanner() {
-        // Limpiar escáner previo si existe
+    static async stopScanner() {
         if (this.html5QrcodeScanner) {
-            try { this.html5QrcodeScanner.stop(); } catch(e) {}
+            const scanner = this.html5QrcodeScanner;
             this.html5QrcodeScanner = null;
+            try {
+                await scanner.stop();
+            } catch(e) {}
+            try {
+                scanner.clear();
+            } catch(e) {}
         }
+    }
+
+    static async initScanner() {
+        // Limpiar escáner previo si existe
+        await this.stopScanner();
 
         const readerEl = document.getElementById('qr-reader');
         if (!readerEl) return;
@@ -403,15 +413,23 @@ class GuardApp {
 
     static async onScanSuccess(decodedText, decodedResult) {
         if (this.isProcessingScan) return; // Prevenir múltiples escaneos simultáneos
-        if (this.currentSequenceIndex >= this.activeRoute.points.length) return;
-
         this.isProcessingScan = true; // Bloquear nuevos escaneos
+
+        if (!this.activeRoute || !this.activeRoute.points || this.currentSequenceIndex >= this.activeRoute.points.length) {
+            this.isProcessingScan = false;
+            return;
+        }
 
         const expectedPoint = this.activeRoute.points[this.currentSequenceIndex].checkpoints;
 
         if (decodedText === expectedPoint.unique_code) {
-            // Escaneo exitoso y correcto
-            
+            // Escaneo exitoso y correcto: DETENER CÁMARA INMEDIATAMENTE para evitar escaneos dobles
+            await this.stopScanner();
+
+            // Efecto visual/sonoro de éxito
+            document.body.style.backgroundColor = 'var(--secondary-color)';
+            setTimeout(() => { document.body.style.backgroundColor = 'var(--bg-color)'; }, 500);
+
             // Intentar obtener geolocalización (no bloqueante)
             let lat = null, lng = null;
             if (navigator.geolocation) {
@@ -433,15 +451,6 @@ class GuardApp {
                 });
             } catch(e) { console.error(e); }
 
-            // Efecto visual/sonoro de éxito
-            document.body.style.backgroundColor = 'var(--secondary-color)';
-            setTimeout(() => { document.body.style.backgroundColor = 'var(--bg-color)'; }, 500);
-
-            // Detener escáner inmediatamente
-            if (this.html5QrcodeScanner) {
-                try { this.html5QrcodeScanner.clear(); } catch(e) {}
-            }
-
             // Avanzar
             this.currentSequenceIndex++;
             this.updateProgressBar();
@@ -450,7 +459,8 @@ class GuardApp {
                 // Mostrar pantalla intermedia de caminata
                 document.getElementById('scanner-container').style.display = 'none';
                 const nextPoint = this.activeRoute.points[this.currentSequenceIndex].checkpoints;
-                document.getElementById('upcoming-checkpoint-name').textContent = nextPoint.name;
+                const upcomingEl = document.getElementById('upcoming-checkpoint-name');
+                if (upcomingEl) upcomingEl.textContent = nextPoint ? nextPoint.name : "Siguiente Punto";
                 document.getElementById('between-points-info').style.display = 'block';
                 
                 document.getElementById('btn-cancel-scan').style.display = 'none';
@@ -460,21 +470,20 @@ class GuardApp {
                 this.completeRound();
             }
 
+            this.isProcessingScan = false;
+
         } else {
             // Escaneo incorrecto
             alert(`Punto Incorrecto.\nDebes escanear: ${expectedPoint.name}`);
+            setTimeout(() => {
+                this.isProcessingScan = false;
+            }, 2000);
         }
-        
-        // Liberar el bloqueo después de procesar
-        setTimeout(() => {
-            this.isProcessingScan = false;
-        }, 1500); 
     }
 
     static async completeRound() {
-        if (this.html5QrcodeScanner) {
-            this.html5QrcodeScanner.clear();
-        }
+        await this.stopScanner();
+
         
         // Registrar fin de ronda en BD
         if (this.activeRoundExecutionId) {
