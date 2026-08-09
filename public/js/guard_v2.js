@@ -20,7 +20,10 @@ class GuardApp {
         const user = Auth.getUser();
         if (!user || user.role !== 'guard') return;
 
-        document.getElementById('guard-user-name').textContent = user.name || user.email;
+        const guardUserName = document.getElementById('guard-user-name');
+        if (guardUserName) {
+            guardUserName.textContent = user.name || user.email;
+        }
         
         const facilityNameHeader = document.getElementById('guard-facility-name-header');
         if (facilityNameHeader) {
@@ -109,7 +112,8 @@ class GuardApp {
         }
 
         try {
-            document.getElementById('guard-status-text').textContent = 'Buscando rondas asignadas...';
+            const statusEl = document.getElementById('guard-status-text');
+            if (statusEl) statusEl.textContent = 'Buscando rondas asignadas...';
 
             let routes = [];
 
@@ -133,10 +137,12 @@ class GuardApp {
             } else {
                 this.showNoRounds();
                 // Mensaje más claro si no hay instalación asignada
-                if (!user || !user.facilityId) {
-                    document.getElementById('guard-status-text').textContent = 'Sin instalación asignada';
-                } else {
-                    document.getElementById('guard-status-text').textContent = 'Sin rondas asignadas';
+                if (statusEl) {
+                    if (!user || !user.facilityId) {
+                        statusEl.textContent = 'Sin instalación asignada';
+                    } else {
+                        statusEl.textContent = 'Sin rondas asignadas';
+                    }
                 }
             }
 
